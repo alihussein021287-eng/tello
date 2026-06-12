@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  avatar    String?
+  role      Role     @default(CUSTOMER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses          Address[]
+  orders             Order[]
+  reviews            Review[]
+  vendor             Vendor?
+  sessions           Session[]
+  vendorApplication  VendorApplication?
+  couponUsages       CouponUsage[]
+  loyaltyWallet      LoyaltyWallet?
+  loyaltyTxns        LoyaltyTransaction[]
+  chatConversations  ChatConversation[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Vendor {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  storeName   String
+  storeNameAr String
+  logo        String?
+  description String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user              User               @relation(fields: [userId], references: [id])
+  products          Product[]
+  commissions       Commission[]
+  chatConversations ChatConversation[]
+  dropshipLinks     DropshipLink[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  nameAr    String
+  icon      String
+  parentId  String?
+  parent    Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children  Category[] @relation("SubCategories")
+  products  Product[]
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  nameAr        String
+  description   String
+  descriptionAr String
+  price         Float
+  comparePrice  Float?
+  images        String[]
+  stock         Int         @default(0)
+  isActive      Boolean     @default(true)
+  categoryId    String
+  vendorId      String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  category      Category      @relation(fields: [categoryId], references: [id])
+  vendor        Vendor        @relation(fields: [vendorId], references: [id])
+  orderItems    OrderItem[]
+  reviews       Review[]
+  dropshipLink  DropshipLink?
+}
+
+model Address {
+  id       String  @id @default(cuid())
+  label    String
+  city     String
+  district String
+  street   String
+  building String?
+  notes    String?
+  lat      Float?
+  lng      Float?
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  orders   Order[]
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  userId        String
+  addressId     String
+  total         Float
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(CASH)
+  paymentStatus PaymentStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  address     Address      @relation(fields: [addressId], references: [id])
+  items       OrderItem[]
+  commissions Commission[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ===== VENDOR EXTENSIONS =====
+model VendorApplication {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  storeName   String
+  storeNameAr String
+  phone       String
+  category    String
+  description String
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Commission {
+  id        String   @id @default(cuid())
+  vendorId  String
+  orderId   String
+  amount    Float    // المبلغ الكلي للطلب
+  rate      Float    // نسبة العمولة (مثلاً 0.10 = 10%)
+  fee       Float    // العمولة المحسوبة
+  status    String   @default("PENDING") // PENDING | PAID
+  createdAt DateTime @default(now())
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+// ===== COUPONS =====
+model Coupon {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  type           String        // PERCENTAGE | FIXED
+  value          Float         // نسبة % أو مبلغ ثابت
+  description    String?
+  minOrderAmount Float?        // الحد الأدنى للطلب
+  maxDiscount    Float?        // أقصى خصم (للـ %)
+  usageLimit     Int?          // عدد استخدامات مسموح
+  usedCount      Int           @default(0)
+  isActive       Boolean       @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  usages         CouponUsage[]
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  orderId   String
+  discount  Float
+  createdAt DateTime @default(now())
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// ===== SCHEMA FIXES — missing relations =====
+// NOTE: Run `bun run db:push` after updating
+
+// ===== LIVE CHAT =====
+model ChatConversation {
+  id          String        @id @default(cuid())
+  userId      String
+  vendorId    String
+  customerId  String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  messages    ChatMessage[]
+  user        User          @relation(fields: [userId],  references: [id])
+  vendor      Vendor        @relation(fields: [vendorId], references: [id])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  messageType    String   @default("text")  // text | image | product
+  metadata       String?  // JSON
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+// ===== LOYALTY POINTS =====
+model LoyaltyWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  points    Int      @default(0)
+  lifetime  Int      @default(0)
+  updatedAt DateTime @updatedAt
+  user         User               @relation(fields: [userId], references: [id])
+  transactions LoyaltyTransaction[]
+
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  walletId    String?
+  type        String   // EARN | REDEEM | ADMIN | EXPIRE
+  points      Int
+  description String
+  orderId     String?
+  createdAt   DateTime @default(now())
+  user        User          @relation(fields: [userId],  references: [id])
+  wallet      LoyaltyWallet? @relation(fields: [walletId], references: [id])
+}
+
+// ===== DROPSHIPPING =====
+model DropshipSupplier {
+  id           String   @id @default(cuid())
+  name         String
+  country      String   @default("China")
+  shippingDays Int      @default(14)
+  apiUrl       String?
+  apiKey       String?
+  commission   Float    @default(0.05)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  products     DropshipProduct[]
+  orders       DropshipOrder[]
+}
+
+model DropshipProduct {
+  id            String   @id @default(cuid())
+  supplierId    String
+  name          String
+  nameAr        String
+  description   String?
+  descriptionAr String?
+  basePrice     Float
+  images        String[]
+  category      String?
+  categoryId    String?
+  weight        Float?
+  origin        String   @default("China")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  supplier      DropshipSupplier @relation(fields: [supplierId], references: [id])
+  links         DropshipLink[]
+}
+
+model DropshipLink {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  dropshipProductId String
+  vendorId          String
+  sellingPrice      Float
+  basePrice         Float
+  margin            Float
+  createdAt         DateTime @default(now())
+  product           Product         @relation(fields: [productId],         references: [id])
+  dropshipProduct   DropshipProduct @relation(fields: [dropshipProductId], references: [id])
+  vendor            Vendor          @relation(fields: [vendorId],          references: [id])
+}
+
+model DropshipOrder {
+  id           String   @id @default(cuid())
+  orderId      String
+  productId    String
+  supplierId   String
+  quantity     Int
+  basePrice    Float
+  sellingPrice Float
+  profit       Float
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  supplier     DropshipSupplier @relation(fields: [supplierId], references: [id])
+}

@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "home": "Home",
+    "categories": "Categories",
+    "cart": "Cart",
+    "account": "My Account",
+    "search": "Search for a product...",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "orders": "My Orders"
+  },
+  "home": {
+    "hero_title": "Shop with confidence,\nreceive fast",
+    "hero_subtitle": "Thousands of products from top sellers, fast delivery to your door",
+    "hero_cta": "Shop Now",
+    "categories_title": "Shop by Category",
+    "featured_title": "Featured Products",
+    "new_arrivals": "New Arrivals",
+    "best_sellers": "Best Sellers"
+  },
+  "product": {
+    "add_to_cart": "Add to Cart",
+    "buy_now": "Buy Now",
+    "out_of_stock": "Out of Stock",
+    "reviews": "Reviews",
+    "description": "Description",
+    "related": "Related Products",
+    "price": "Price",
+    "quantity": "Quantity"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty",
+    "empty_desc": "Add products to start shopping",
+    "total": "Total",
+    "checkout": "Checkout",
+    "remove": "Remove",
+    "continue": "Continue Shopping"
+  },
+  "auth": {
+    "login_title": "Login",
+    "register_title": "Create new account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "login_btn": "Login",
+    "register_btn": "Create Account",
+    "have_account": "Already have an account?",
+    "no_account": "Don't have an account?"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try again",
+    "see_all": "See All",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "iqd": "IQD"
+  }
+}

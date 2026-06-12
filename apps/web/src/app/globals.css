@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg:        #ffffff;
+    --bg-soft:   #F7F7F8;
+    --border:    #E5E7EB;
+    --text:      #111318;
+    --text-muted:#6B7280;
+    --primary:   #1B4FD8;
+    --gold:      #D4A853;
+    --radius:    0.75rem;
+  }
+
+  .dark {
+    --bg:        #0F0F10;
+    --bg-soft:   #1A1A1D;
+    --border:    #2A2A2F;
+    --text:      #F4F4F6;
+    --text-muted:#9CA3AF;
+    --primary:   #4d7bff;
+    --gold:      #e8c06a;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* RTL support */
+  [dir="rtl"] body {
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+  }
+  [dir="ltr"] body {
+    font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-surface-light dark:hover:bg-surface-dark text-[var(--text)] font-medium px-4 py-2 rounded-xl transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-[var(--bg)] border border-[var(--border)] rounded-2xl overflow-hidden;
+  }
+
+  .skeleton {
+    @apply bg-gradient-to-r from-[var(--bg-soft)] via-[var(--border)] to-[var(--bg-soft)] bg-[length:200%_100%] animate-shimmer rounded-xl;
+  }
+
+  .input {
+    @apply w-full bg-[var(--bg-soft)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-soft); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Hide scrollbar for category strip */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

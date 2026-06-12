@@ -1,0 +1,67 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "categories": "الأقسام",
+    "cart": "السلة",
+    "account": "حسابي",
+    "search": "ابحث عن منتج...",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "orders": "طلباتي"
+  },
+  "home": {
+    "hero_title": "تسوّق بثقة،\nاستلم بسرعة",
+    "hero_subtitle": "آلاف المنتجات من أفضل البائعين، توصيل سريع لباب بيتك",
+    "hero_cta": "تسوّق الآن",
+    "categories_title": "تسوّق حسب القسم",
+    "featured_title": "منتجات مميزة",
+    "new_arrivals": "وصل حديثاً",
+    "best_sellers": "الأكثر مبيعاً"
+  },
+  "product": {
+    "add_to_cart": "أضف للسلة",
+    "buy_now": "اشتري الآن",
+    "out_of_stock": "نفذ من المخزون",
+    "reviews": "تقييمات",
+    "description": "الوصف",
+    "related": "منتجات مشابهة",
+    "price": "السعر",
+    "quantity": "الكمية",
+    "add_cart": "أضف للسلة",
+    "qty": "الكمية"
+  },
+  "cart": {
+    "title": "سلة التسوق",
+    "empty": "سلتك فارغة",
+    "empty_desc": "أضف منتجات لتبدأ التسوق",
+    "total": "المجموع",
+    "checkout": "إتمام الطلب",
+    "remove": "حذف",
+    "continue": "مواصلة التسوق"
+  },
+  "auth": {
+    "login_title": "تسجيل الدخول",
+    "register_title": "إنشاء حساب جديد",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "name": "الاسم الكامل",
+    "phone": "رقم الهاتف",
+    "login_btn": "دخول",
+    "register_btn": "إنشاء الحساب",
+    "have_account": "عندك حساب؟ سجّل دخولك",
+    "no_account": "ما عندك حساب؟",
+    "register": "إنشاء حساب"
+  },
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "retry": "حاول مجدداً",
+    "see_all": "عرض الكل",
+    "back": "رجوع",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "iqd": "د.ع"
+  }
+}

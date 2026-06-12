@@ -1,0 +1,142 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tello-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: tello
+      POSTGRES_PASSWORD: tello_pass
+      POSTGRES_DB: tello_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tello-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tello-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - tello-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: tello-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: tello_minio
+      MINIO_ROOT_PASSWORD: tello_minio_pass
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - tello-network
+
+  api:
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: tello-api
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - tello-network
+
+  ai:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    container_name: tello-ai
+    restart: always
+    ports:
+      - "4001:4001"
+    env_file:
+      - .env
+    networks:
+      - tello-network
+
+  web:
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: tello-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "https://api.fshsmart.com"
+    networks:
+      - tello-network
+
+  admin:
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: tello-admin
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: "https://api.fshsmart.com"
+    networks:
+      - tello-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tello-n8n
+    restart: always
+    environment:
+      - N8N_HOST=n8n.fshsmart.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.fshsmart.com/
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=TelloN8n2025!
+      - GENERIC_TIMEZONE=Asia/Baghdad
+      - TZ=Asia/Baghdad
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - tello-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  n8n_data:
+
+networks:
+  tello-network:
+    driver: bridge
