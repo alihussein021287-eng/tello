@@ -37,6 +37,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   extra: {
     apiUrl: process.env.API_URL || "https://api.fshsmart.com",
-    eas: { projectId: "4715c194-8b61-4bee-9127-0c1513f82889" },
+    eas: { projectId: "8e3a8b3e-67b6-4c10-b0cf-f1200740680f" },
   },
 })

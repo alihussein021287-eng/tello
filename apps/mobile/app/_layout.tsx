@@ -38,8 +38,9 @@ function CartIcon({ focused }: { focused: boolean }) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ IBMPlexSansArabic_400Regular, IBMPlexSansArabic_500Medium, IBMPlexSansArabic_700Bold })
-  if (!fontsLoaded) return null
+  const [fontsLoaded, fontError] = useFonts({ IBMPlexSansArabic_400Regular, IBMPlexSansArabic_500Medium, IBMPlexSansArabic_700Bold })
+  // نكمل حتى لو فشل تحميل الخط (نستخدم خط النظام) — حتى لا تعلق الشاشة
+  if (!fontsLoaded && !fontError) return null
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
