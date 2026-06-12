@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: tello
-      POSTGRES_PASSWORD: tello_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: tello_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
