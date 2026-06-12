@@ -32,8 +32,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     networks:
       - tello-network
 
@@ -50,7 +50,7 @@ services:
     container_name: tello-api
     restart: always
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     env_file:
       - .env
     depends_on:
@@ -66,7 +66,7 @@ services:
     container_name: tello-ai
     restart: always
     ports:
-      - "4001:4001"
+      - "127.0.0.1:4001:4001"
     env_file:
       - .env
     networks:
@@ -85,7 +85,7 @@ services:
     container_name: tello-web
     restart: always
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: "https://api.fshsmart.com"
     networks:
@@ -104,7 +104,7 @@ services:
     container_name: tello-admin
     restart: always
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       NEXT_PUBLIC_API_URL: "https://api.fshsmart.com"
     networks:
@@ -127,7 +127,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     networks:
       - tello-network
 
