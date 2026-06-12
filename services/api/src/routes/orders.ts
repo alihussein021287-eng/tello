@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
 import { prisma } from "../lib/db"
 import { authMiddleware } from "../middleware/auth"
+import { awardPoints } from "./loyalty"
 
 export const orderRoutes = new Hono()
 orderRoutes.use("*", authMiddleware)
@@ -52,6 +53,14 @@ orderRoutes.post("/", zValidator("json", createOrderSchema), async (c) => {
     },
     include: { items: { include: { product: true } }, address: true },
   })
+
+  // منح نقاط الولاء (لا يكسر الطلب إذا فشل)
+  try {
+    await awardPoints(userId, order.id, total)
+  } catch (e) {
+    console.error("[awardPoints] failed:", e)
+  }
+
   return c.json({ success: true, data: order }, 201)
 })
 
