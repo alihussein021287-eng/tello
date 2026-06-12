@@ -16,11 +16,13 @@ services:
     image: redis:7-alpine
     container_name: tello-redis
     restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
       - tello-network
-
   minio:
     image: minio/minio:latest
     container_name: tello-minio

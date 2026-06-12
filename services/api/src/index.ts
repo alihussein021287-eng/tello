@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { HTTPException } from "hono/http-exception"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
@@ -131,6 +132,9 @@ app.post("/ai/:path{.*}", async (c) => {
 
 app.notFound((c) => c.json({ success: false, message: "Route not found" }, 404))
 app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return c.json({ success: false, message: err.message }, err.status)
+  }
   console.error("[API Error]", err)
   return c.json({ success: false, message: "Internal server error" }, 500)
 })
