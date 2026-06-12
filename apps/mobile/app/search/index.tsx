@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   backBtn:     { fontSize: FontSize.xl, color: Colors.text, paddingEnd: 4 },
   searchBar:   { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: Colors.bgSoft, paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border },
   input:       { flex: 1, fontSize: FontSize.sm, color: Colors.text, padding: 0 },
-  aiBtn:       { w: 36, h: 36, padding: 8, backgroundColor: Colors.bgSoft, borderRadius: Radius.md, borderWidth: 1, borderColor: `${Colors.gold}60` },
+  aiBtn:       { width: 36, height: 36, padding: 8, backgroundColor: Colors.bgSoft, borderRadius: Radius.md, borderWidth: 1, borderColor: `${Colors.gold}60` },
   aiBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   aiBanner:    { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 6, backgroundColor: `${Colors.gold}15`, borderBottomWidth: 1, borderBottomColor: `${Colors.gold}30` },
   aiBannerText:{ fontSize: FontSize.xs, color: Colors.gold, fontWeight: FontWeight.medium },
