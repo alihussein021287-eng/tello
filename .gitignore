@@ -21,3 +21,9 @@ node_modules/
 *.bak
 *.bak2
 apps/_backups/
+
+# نسخ DB احتياطية + ملفات Expo مؤقتة
+*.sql
+product_backup_*
+apps/mobile/.expo/
+.expo/
