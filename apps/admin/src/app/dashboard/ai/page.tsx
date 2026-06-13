@@ -41,40 +41,9 @@ export default function AIPage() {
     setChatMsgs((p) => [...p, { role: "assistant", content: "", streaming: true }])
 
     try {
-      const history = chatMsgs.slice(-6).map((m) => ({ role: m.role, content: m.content }))
-      history.push({ role: "user", content: msg })
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/ai/chat`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history }),
-        }
-      )
-
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let full = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue
-          const data = line.slice(6)
-          if (data === "[DONE]") break
-          try {
-            const { text } = JSON.parse(data)
-            if (text) {
-              full += text
-              setChatMsgs((p) => [...p.slice(0, -1), { role: "assistant", content: full, streaming: true }])
-            }
-          } catch {}
-        }
-      }
-      setChatMsgs((p) => [...p.slice(0, -1), { role: "assistant", content: full }])
+      const res = await adminApi.ai.ask(msg)
+      const answer = res.data?.answer || "ما قدرت أجاوب، حاول بصيغة ثانية."
+      setChatMsgs((p) => [...p.slice(0, -1), { role: "assistant", content: answer }])
     } catch {
       setChatMsgs((p) => [...p.slice(0, -1), { role: "assistant", content: "حدث خطأ، حاول مجدداً." }])
     } finally {

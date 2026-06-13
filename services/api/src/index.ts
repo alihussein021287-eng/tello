@@ -70,13 +70,29 @@ app.post("/admin/ai-products", async (c) => {
   try {
     const body = await c.req.json()
     const { prisma } = await import("./lib/db")
+
+    // رفض المنتجات بلا اسم حقيقي (نمنع "New Product")
+    const productName = body.nameEn || body.name
+    const productNameAr = body.nameAr || body.name
+    if (!productName || !productNameAr) {
+      return c.json({ success: false, message: "Product name required" }, 400)
+    }
+
+    // فحص التكرار — لا نضيف منتج موجود بنفس الاسم
+    const existing = await prisma.product.findFirst({
+      where: { OR: [{ name: productName }, { nameAr: productNameAr }] }
+    })
+    if (existing) {
+      return c.json({ success: false, message: "Product already exists", skipped: true, data: existing }, 200)
+    }
+
     const vendor = await prisma.vendor.findFirst()
     if (!vendor) return c.json({ success: false, message: "No vendor found" }, 400)
     const category = await prisma.category.findFirst()
     const product = await prisma.product.create({
       data: {
-        name: body.nameEn || body.name || "New Product",
-        nameAr: body.nameAr || body.name || "منتج جديد",
+        name: productName,
+        nameAr: productNameAr,
         description: body.description || "",
         descriptionAr: body.descriptionAr || body.description || "",
         price: Number(body.price) || 50000,

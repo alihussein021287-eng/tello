@@ -9,6 +9,9 @@ import toast from "react-hot-toast"
 export default function ProductsPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("")
+  const [aiReview, setAiReview] = useState<Record<string, any>>({})
+  const [reviewing, setReviewing] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editProduct, setEditProduct] = useState<any>(null)
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -19,9 +22,31 @@ export default function ProductsPage() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin", "products", search],
-    queryFn: () => adminApi.products.list({ search, limit: 50 }),
+    queryKey: ["admin", "products", search, statusFilter],
+    queryFn: () => adminApi.products.list({ search, status: statusFilter, limit: 50 }),
   })
+  const approveMut = useMutation({
+    mutationFn: (id: string) => adminApi.products.approve(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "products"] }); toast.success("تمت الموافقة على المنتج ✓") },
+  })
+  const rejectMut = useMutation({
+    mutationFn: (id: string) => adminApi.products.reject(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "products"] }); toast.success("تم رفض المنتج") },
+  })
+  async function handleAIReview(p: any) {
+    setReviewing(p.id)
+    try {
+      const res = await adminApi.ai.reviewProduct({
+        nameAr: p.nameAr, name: p.name, description: p.descriptionAr || p.description,
+        price: p.price, comparePrice: p.comparePrice, images: p.images, category: p.category?.nameAr,
+      })
+      setAiReview(prev => ({ ...prev, [p.id]: res.data }))
+    } catch {
+      toast.error("تعذّرت المراجعة الذكية")
+    } finally {
+      setReviewing(null)
+    }
+  }
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => adminApi.products.delete(id),
@@ -93,6 +118,15 @@ export default function ProductsPage() {
           </button>
         </div>
 
+        {/* فلتر الحالة */}
+        <div className="flex gap-2 flex-wrap">
+          {[["","الكل"],["PENDING","بانتظار المراجعة"],["APPROVED","موافق عليها"],["REJECTED","مرفوضة"]].map(([val,label]) => (
+            <button key={val} onClick={() => setStatusFilter(val)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter===val ? "bg-primary-500 text-white" : "bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text)]"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
         {/* Table */}
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -127,6 +161,17 @@ export default function ProductsPage() {
                         <div>
                           <p className="font-medium text-[var(--text)]">{p.nameAr}</p>
                           <p className="text-xs text-[var(--text-muted)]">{p.name}</p>
+                          {aiReview[p.id] && (
+                            <div className={`mt-1 text-xs rounded-lg px-2 py-1 ${aiReview[p.id].recommendation === "approve" ? "bg-green-500/10 text-green-600" : aiReview[p.id].recommendation === "reject" ? "bg-red-500/10 text-red-500" : "bg-yellow-500/10 text-yellow-600"}`}>
+                              <span className="font-semibold">✨ AI: {aiReview[p.id].recommendation === "approve" ? "موافقة" : aiReview[p.id].recommendation === "reject" ? "رفض" : "مراجعة"} ({aiReview[p.id].score}/100)</span>
+                              <p className="mt-0.5 opacity-90">{aiReview[p.id].summary}</p>
+                              {aiReview[p.id].issues?.length > 0 && (
+                                <ul className="mt-0.5 list-disc list-inside opacity-80">
+                                  {aiReview[p.id].issues.slice(0,3).map((iss: string, i: number) => <li key={i}>{iss}</li>)}
+                                </ul>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -139,13 +184,30 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <span className={p.isActive ? "badge-green" : "badge-red"}>
-                        {p.isActive ? "نشط" : "مخفي"}
-                      </span>
+                      {p.status === "PENDING" ? (
+                        <span className="badge bg-yellow-500/15 text-yellow-600 text-xs">بانتظار المراجعة</span>
+                      ) : p.status === "REJECTED" ? (
+                        <span className="badge bg-red-500/15 text-red-500 text-xs">مرفوض</span>
+                      ) : (
+                        <span className={p.isActive ? "badge-green" : "badge-red"}>{p.isActive ? "نشط" : "مخفي"}</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-[var(--text-muted)] text-xs">{p.category?.nameAr}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1">
+                        {p.status === "PENDING" && (
+                          <>
+                            <button onClick={() => handleAIReview(p)} disabled={reviewing === p.id} title="مراجعة بالذكاء الاصطناعي" className="px-2 py-1 text-xs bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50">
+                              {reviewing === p.id ? "..." : "AI ✨"}
+                            </button>
+                            <button onClick={() => approveMut.mutate(p.id)} title="موافقة" className="px-2 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600">
+                              موافقة
+                            </button>
+                            <button onClick={() => { if (confirm("رفض المنتج؟")) rejectMut.mutate(p.id) }} title="رفض" className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600">
+                              رفض
+                            </button>
+                          </>
+                        )}
                         <button onClick={() => openEdit(p)} className="p-1.5 hover:bg-[var(--bg)] rounded-lg transition-colors text-[var(--text-muted)] hover:text-primary-500">
                           <Edit className="w-3.5 h-3.5" />
                         </button>

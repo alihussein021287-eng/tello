@@ -46,6 +46,28 @@ uploadRoutes.post("/images", async (c) => {
   return c.json({ success: true, data: { urls } })
 })
 
+// رفع صورة من base64 (لصور الـ AI المولّدة)
+uploadRoutes.post("/base64", async (c) => {
+  const { dataUrl } = await c.req.json().catch(() => ({ dataUrl: "" }))
+  if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+    return c.json({ success: false, message: "بيانات صورة غير صالحة" }, 400)
+  }
+  try {
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/)
+    if (!match) return c.json({ success: false, message: "صيغة غير صالحة" }, 400)
+    const mimetype = match[1]
+    const buffer = Buffer.from(match[2], "base64")
+    if (buffer.length > 10 * 1024 * 1024) {
+      return c.json({ success: false, message: "الصورة كبيرة جداً" }, 400)
+    }
+    const ext = mimetype.split("/")[1] || "png"
+    const url = await uploadImage(buffer, `ai-image.${ext}`, mimetype)
+    return c.json({ success: true, data: { url } })
+  } catch (e: any) {
+    return c.json({ success: false, message: e.message || "فشل الرفع" }, 500)
+  }
+})
+
 // حذف صورة
 uploadRoutes.delete("/image", async (c) => {
   const { url } = await c.req.json()

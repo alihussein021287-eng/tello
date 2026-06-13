@@ -10,7 +10,7 @@ export default function TermsPage() {
       <Header />
       <main className="max-w-3xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold mb-2">📋 الشروط والأحكام</h1>
-        <p className="text-[var(--text-muted)] text-sm mb-8">آخر تحديث: يناير 2025</p>
+        <p className="text-[var(--text-muted)] text-sm mb-8">آخر تحديث: يونيو 2026</p>
         <div className="space-y-5 text-sm">
           {[
             { title: "القبول", content: "باستخدام منصة Tello، فإنك توافق على هذه الشروط. إذا كنت لا توافق، يرجى التوقف عن استخدام المنصة." },

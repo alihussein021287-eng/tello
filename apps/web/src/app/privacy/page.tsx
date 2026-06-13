@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <Header />
       <main className="max-w-3xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold mb-2">🔒 سياسة الخصوصية</h1>
-        <p className="text-[var(--text-muted)] text-sm mb-8">آخر تحديث: يناير 2025</p>
+        <p className="text-[var(--text-muted)] text-sm mb-8">آخر تحديث: يونيو 2026</p>
         <div className="space-y-5 text-sm">
           {[
             { title: "البيانات التي نجمعها", content: "نجمع الاسم والبريد الإلكتروني ورقم الهاتف عند التسجيل، وبيانات الطلبات وسجل التصفح لتحسين تجربتك." },

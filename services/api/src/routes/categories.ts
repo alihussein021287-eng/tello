@@ -10,7 +10,7 @@ export const categoryRoutes = new Hono()
 categoryRoutes.get("/", async (c) => {
   const categories = await prisma.category.findMany({
     where:   { parentId: null },
-    include: { children: true, _count: { select: { products: true } } },
+    include: { children: true, _count: { select: { products: { where: { isActive: true } } } } },
     orderBy: { name: "asc" },
   })
   return c.json({ success: true, data: categories })

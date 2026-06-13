@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { Tabs } from "expo-router"
 import { View, Text, StyleSheet, Platform } from "react-native"
 import { Home, Search, ShoppingCart, User, Bell } from "lucide-react-native"
@@ -8,6 +9,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useFonts, IBMPlexSansArabic_400Regular, IBMPlexSansArabic_500Medium, IBMPlexSansArabic_700Bold } from "@expo-google-fonts/ibm-plex-sans-arabic"
 import Toast from "react-native-toast-message"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
+
+// معالج أخطاء عام — يعرض أي خطأ غير ممسوك
+if (typeof ErrorUtils !== "undefined") {
+  const prevHandler = ErrorUtils.getGlobalHandler?.()
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error("GLOBAL ERROR:", error?.message, error?.stack)
+    prevHandler?.(error, isFatal)
+  })
+}
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } })
 
@@ -38,7 +48,7 @@ function CartIcon({ focused }: { focused: boolean }) {
 }
 
 export default function RootLayout() {
-  // نحمّل الخطوط بالخلفية بدون توقيف الواجهة — حتى لا تعلق الشاشة الزرقاء
+  // نحمّل الخطوط بالخلفية بدون توقيف الواجهة
   useFonts({ IBMPlexSansArabic_400Regular, IBMPlexSansArabic_500Medium, IBMPlexSansArabic_700Bold })
 
   return (

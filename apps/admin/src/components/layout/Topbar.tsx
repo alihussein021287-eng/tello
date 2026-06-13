@@ -2,12 +2,14 @@
 import { Bell, Search, X, ShoppingBag } from "lucide-react"
 import { useAdminAuth } from "@/store/auth"
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 
 interface TopbarProps {
   title: string
 }
 
 export function Topbar({ title }: TopbarProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unread, setUnread] = useState(0)
@@ -26,21 +28,41 @@ export function Topbar({ title }: TopbarProps) {
   async function fetchNotifications() {
     try {
       const token = useAdminAuth.getState().token
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      const orders = data.data?.recentOrders || []
-      const notifs = orders.slice(0, 10).map((o: any) => ({
-        id: o.id,
-        title: `طلب #${o.id.slice(-6).toUpperCase()}`,
-        body: `${o.user?.name || 'عميل'} — ${o.total?.toLocaleString()} د.ع`,
-        time: new Date(o.createdAt).toLocaleString('ar-IQ', {timeZone: 'Asia/Baghdad'}),
-        status: o.status,
+      const list = (data.data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title || "إشعار",
+        body: n.body,
+        time: new Date(n.createdAt).toLocaleString('ar-IQ', {timeZone: 'Asia/Baghdad'}),
+        status: n.type,
+        link: n.data?.link,
+        read: n.read,
       }))
-      setNotifications(notifs)
-      setUnread(notifs.length)
+      setNotifications(list)
+      setUnread(data.unread || list.filter((n: any) => !n.read).length)
     } catch {}
+  }
+
+  async function handleNotifClick(n: any) {
+    // علّمه مقروء
+    try {
+      const token = useAdminAuth.getState().token
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/${n.id}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {}
+    // حوّل أي رابط لمسار صحيح داخل لوحة الأدمن
+    const raw = n.link || ""
+    let link = "/dashboard"
+    if (raw.includes("orders") || (n.status || "").includes("ORDER")) link = "/dashboard/orders"
+    else if (raw.includes("vendor")) link = "/dashboard/vendors"
+    setOpen(false)
+    fetchNotifications()
+    router.push(link)
   }
 
   const statusColor: Record<string, string> = {
@@ -84,17 +106,21 @@ export function Topbar({ title }: TopbarProps) {
           {open && (
             <div className="absolute end-0 top-11 w-80 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                <span className="font-semibold text-sm text-[var(--text)]">آخر الطلبات</span>
+                <span className="font-semibold text-sm text-[var(--text)]">الإشعارات</span>
                 <button onClick={() => setOpen(false)}>
                   <X className="w-4 h-4 text-[var(--text-muted)]" />
                 </button>
               </div>
               <div className="max-h-72 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="py-8 text-center text-[var(--text-muted)] text-sm">لا توجد طلبات</div>
+                  <div className="py-8 text-center text-[var(--text-muted)] text-sm">لا توجد إشعارات</div>
                 ) : (
                   notifications.map((n) => (
-                    <div key={n.id} className="flex gap-3 px-4 py-3 hover:bg-[var(--bg)] border-b border-[var(--border)] last:border-0 cursor-pointer">
+                    <div
+                      key={n.id}
+                      onClick={() => handleNotifClick(n)}
+                      className={`flex gap-3 px-4 py-3 hover:bg-[var(--bg)] border-b border-[var(--border)] last:border-0 cursor-pointer ${n.read ? 'opacity-60' : ''}`}
+                    >
                       <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex items-center justify-center flex-shrink-0">
                         <ShoppingBag className="w-4 h-4 text-[var(--accent)]" />
                       </div>
@@ -103,9 +129,7 @@ export function Topbar({ title }: TopbarProps) {
                         <p className="text-xs text-[var(--text-muted)] truncate">{n.body}</p>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{n.time}</p>
                       </div>
-                      <span className={`text-[10px] font-semibold self-start mt-1 ${statusColor[n.status] || 'text-[var(--text-muted)]'}`}>
-                        {statusAr[n.status] || n.status}
-                      </span>
+                      {!n.read && <span className="w-2 h-2 rounded-full bg-red-500 self-start mt-1.5 flex-shrink-0" />}
                     </div>
                   ))
                 )}

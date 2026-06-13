@@ -20,6 +20,10 @@ export default function VendorProductsPage() {
   const [editProduct, setEditProduct] = useState<any>(null)
   const [aiLoading, setAiLoading]   = useState(false)
   const [uploading, setUploading]   = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [importing, setImporting]   = useState(false)
+  const [importResult, setImportResult] = useState<any>(null)
+  const csvRef = useRef<HTMLInputElement>(null)
   const [form, setForm]             = useState(EMPTY_FORM)
   const [editingStock, setEditingStock] = useState<string | null>(null)
   const [stockValue, setStockValue]     = useState<string>("")
@@ -130,26 +134,132 @@ export default function VendorProductsPage() {
     }
   }
 
+  const [genImg, setGenImg] = useState(false)
+  const generateImage = async () => {
+    if (!form.nameAr && !form.name) return toast.error("اكتب اسم المنتج أولاً")
+    setGenImg(true)
+    try {
+      const cat = cats?.data?.find((c: any) => c.id === form.categoryId)
+      // 1) توليد الصورة بالـ AI
+      const gen = await api.post("/api/ai/admin/generate-image", {
+        name: form.nameAr || form.name,
+        category: cat?.nameAr || "",
+        descriptionAr: form.descriptionAr || "",
+      }, { timeout: 120000 })
+      const dataUrl = gen.data?.data?.imageUrl
+      if (!dataUrl) throw new Error("no image")
+      // 2) رفع الصورة لـ MinIO
+      const up = await api.post("/api/upload/base64", { dataUrl }, { timeout: 60000 })
+      const url = up.data?.data?.url
+      if (url) {
+        setForm(f => ({ ...f, images: [...f.images, url] }))
+        toast.success("تم توليد الصورة بالذكاء الاصطناعي 🎨")
+      }
+    } catch {
+      toast.error("تعذّر توليد الصورة")
+    } finally {
+      setGenImg(false)
+    }
+  }
   const removeImage = (idx: number) => {
     setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
   }
+  // تحميل قالب CSV
+  function downloadTemplate() {
+    const header = "nameAr,name,price,comparePrice,stock,category,description,image"
+    const example = "حذاء رياضي,Sport Shoe,75000,90000,20,أحذية,حذاء مريح للجري,https://example.com/shoe.jpg"
+    const csv = "\uFEFF" + header + "\n" + example
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = "tello_products_template.csv"; a.click()
+    URL.revokeObjectURL(url)
+  }
+  // قراءة CSV بسيطة
+  function parseCSV(text: string): any[] {
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(l => l.trim())
+    if (lines.length < 2) return []
+    const headers = lines[0].split(",").map(h => h.trim())
+    return lines.slice(1).map(line => {
+      // تقسيم بسيط يدعم الفواصل داخل علامات اقتباس
+      const vals: string[] = []
+      let cur = "", inQ = false
+      for (const ch of line) {
+        if (ch === '"') inQ = !inQ
+        else if (ch === "," && !inQ) { vals.push(cur); cur = "" }
+        else cur += ch
+      }
+      vals.push(cur)
+      const obj: any = {}
+      headers.forEach((h, i) => { obj[h] = (vals[i] || "").trim() })
+      return obj
+    })
+  }
+  async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true); setImportResult(null)
+    try {
+      const text = await file.text()
+      const products = parseCSV(text)
+      if (!products.length) { toast.error("الملف فارغ أو غير صالح"); setImporting(false); return }
+      const res = await api.post("/api/vendor/products/bulk", { products })
+      setImportResult(res.data?.data)
+      qc.invalidateQueries({ queryKey: ["vendor-products"] })
+      toast.success(`تم استيراد ${res.data?.data?.created || 0} منتج ✅`)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "فشل الاستيراد")
+    } finally {
+      setImporting(false)
+      if (csvRef.current) csvRef.current.value = ""
+    }
+  }
 
+  const [genFull, setGenFull] = useState(false)
+  const generateFullProduct = async () => {
+    if (!form.nameAr && !form.name) return toast.error("اكتب اسم المنتج أولاً")
+    setGenFull(true)
+    try {
+      const res = await api.post("/api/ai/admin/generate-product", { name: form.nameAr || form.name }, { timeout: 60000 })
+      const d = res.data?.data
+      if (d) {
+        setForm(f => ({
+          ...f,
+          nameAr: d.nameAr || f.nameAr,
+          name: d.name || f.name,
+          descriptionAr: d.descriptionAr || f.descriptionAr,
+          description: d.description || f.description,
+          categoryId: d.suggestedCategoryId || f.categoryId,
+          price: d.suggestedPrice ? String(d.suggestedPrice) : f.price,
+        }))
+        toast.success("تم توليد المنتج بالكامل ✨")
+      }
+    } catch {
+      toast.error("تعذّر التوليد")
+    } finally {
+      setGenFull(false)
+    }
+  }
   const generateDesc = async () => {
-    if (!form.name) return toast.error("أدخل اسم المنتج أولاً")
+    if (!form.nameAr && !form.name) return toast.error("اكتب اسم المنتج أولاً")
     setAiLoading(true)
     try {
-      const cat = cats?.data?.find((c: any) => c.id === form.categoryId)
-      const res = await api.post("/api/ai/admin/generate-description", {
-        name: form.name, category: cat?.nameAr || "", price: Number(form.price),
-      })
-      setForm(f => ({
-        ...f,
-        description:   res.data.description?.en || f.description,
-        descriptionAr: res.data.description?.ar || f.descriptionAr,
-      }))
-      toast.success("تم توليد الوصف ✨")
+      const res = await api.post("/api/ai/admin/improve-description", {
+        nameAr: form.nameAr,
+        currentAr: form.descriptionAr,
+        currentEn: form.description,
+      }, { timeout: 60000 })
+      const d = res.data?.data
+      if (d) {
+        setForm(f => ({
+          ...f,
+          descriptionAr: d.descriptionAr || f.descriptionAr,
+          description: d.description || f.description,
+        }))
+        toast.success("تم تحسين الوصف ✨")
+      }
     } catch {
-      toast.error("حدث خطأ في AI")
+      toast.error("تعذّر تحسين الوصف")
     } finally {
       setAiLoading(false)
     }
@@ -181,10 +291,16 @@ export default function VendorProductsPage() {
           <h1 className="text-xl font-bold">منتجاتي</h1>
           <p className="text-sm text-[var(--text-muted)]">{products.length} منتج</p>
         </div>
-        <button onClick={openNew} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          منتج جديد
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowImport(true); setImportResult(null) }} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--bg-soft)] text-sm font-medium">
+            <Upload className="w-4 h-4" />
+            استيراد بالجملة
+          </button>
+          <button onClick={openNew} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            منتج جديد
+          </button>
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -283,6 +399,15 @@ export default function VendorProductsPage() {
             </div>
 
             <div className="p-5 space-y-5">
+              {/* زر التوليد الكامل بالـ AI */}
+              <button
+                onClick={generateFullProduct}
+                disabled={genFull}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-primary-500 text-white rounded-xl py-2.5 text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                <Sparkles className="w-4 h-4" />
+                {genFull ? "جاري التوليد..." : "✨ اكتب الاسم ودع الذكاء الاصطناعي يكمل الباقي"}
+              </button>
               {/* الأسماء */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -335,6 +460,22 @@ export default function VendorProductsPage() {
                       </>
                     )}
                   </button>
+                  <button
+                    type="button"
+                    onClick={generateImage}
+                    disabled={genImg}
+                    title="توليد صورة بالذكاء الاصطناعي"
+                    className="w-20 h-20 border-2 border-dashed border-purple-400/50 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-purple-400 transition-colors text-purple-500 disabled:opacity-50"
+                  >
+                    {genImg ? (
+                      <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        <span className="text-xs">توليد AI</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <input
                   ref={fileRef}
@@ -367,7 +508,7 @@ export default function VendorProductsPage() {
                 className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-yellow-400/50 hover:border-yellow-400 text-yellow-600 dark:text-yellow-400 rounded-xl py-2.5 text-sm font-medium transition-all disabled:opacity-40"
               >
                 <Sparkles className="w-4 h-4" />
-                {aiLoading ? "جاري التوليد..." : "✨ توليد الوصف بالذكاء الاصطناعي"}
+                {aiLoading ? "جاري التوليد..." : "✨ تحسين وترجمة الوصف بالذكاء الاصطناعي"}
               </button>
 
               {/* الوصف */}
@@ -407,6 +548,43 @@ export default function VendorProductsPage() {
           </div>
         </div>
       )}
+
+      {/* مودال الاستيراد بالجملة */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowImport(false)}>
+          <div className="bg-[var(--bg)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">استيراد منتجات بالجملة</h2>
+              <button onClick={() => setShowImport(false)}><X className="w-5 h-5 text-[var(--text-muted)]" /></button>
+            </div>
+            <div className="text-sm text-[var(--text-muted)] space-y-2">
+              <p>١. حمّل القالب، عبّيه بمنتجاتك (يفتح بـ Excel)، واحفظه CSV.</p>
+              <p>٢. ارفع الملف — المنتجات تُرسل لمراجعة الإدارة قبل النشر.</p>
+              <p className="text-xs">الأعمدة: nameAr (الاسم عربي)، name (إنجليزي)، price، comparePrice، stock، category، description، image</p>
+            </div>
+            <button onClick={downloadTemplate} className="w-full py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--bg-soft)] text-sm font-medium flex items-center justify-center gap-2">
+              <Package className="w-4 h-4" /> تحميل القالب (CSV)
+            </button>
+            <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCSVImport} className="hidden" />
+            <button onClick={() => csvRef.current?.click()} disabled={importing} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+              <Upload className="w-4 h-4" />
+              {importing ? "جاري الاستيراد..." : "رفع ملف CSV"}
+            </button>
+            {importResult && (
+              <div className="rounded-xl bg-[var(--bg-soft)] p-4 text-sm space-y-2">
+                <p className="text-green-600 font-semibold">✓ تمت إضافة {importResult.created} منتج (بانتظار الموافقة)</p>
+                {importResult.skipped > 0 && <p className="text-yellow-600">تم تخطّي {importResult.skipped} منتج</p>}
+                {importResult.errors?.length > 0 && (
+                  <div className="text-xs text-[var(--text-muted)] max-h-32 overflow-y-auto space-y-0.5">
+                    {importResult.errors.slice(0, 10).map((e: string, i: number) => <p key={i}>• {e}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

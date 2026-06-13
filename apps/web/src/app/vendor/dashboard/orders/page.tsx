@@ -1,5 +1,6 @@
 "use client"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import toast from "react-hot-toast"
 import { api } from "@/lib/api"
 
 const STATUS_AR: Record<string, string> = {
@@ -13,10 +14,24 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 export default function VendorOrdersPage() {
+  const qc = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ["vendor-orders"],
     queryFn:  () => api.get("/api/vendor/orders").then(r => r.data),
   })
+  const statusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.patch(`/api/vendor/orders/${id}/status`, { status }).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendor-orders"] }); toast.success("تم تحديث حالة الطلب ✓") },
+    onError: () => toast.error("تعذّر تحديث الحالة"),
+  })
+  // الحالة التالية المتاحة للبائع
+  const nextStatus: Record<string, { s: string; label: string } | null> = {
+    PENDING:   { s: "CONFIRMED", label: "تأكيد الطلب" },
+    CONFIRMED: { s: "PREPARING", label: "بدء التحضير" },
+    PREPARING: { s: "SHIPPING",  label: "إرسال للتوصيل" },
+    SHIPPING:  null, DELIVERED: null, CANCELLED: null,
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -26,7 +41,7 @@ export default function VendorOrdersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] bg-[var(--bg-soft)]">
-              {["#الطلب", "العميل", "المنتجات", "المبلغ", "الحالة", "التاريخ"].map(h => (
+              {["#الطلب", "العميل", "المنتجات", "المبلغ", "الحالة", "التاريخ", "إجراء"].map(h => (
                 <th key={h} className="text-start px-4 py-3 text-xs font-medium text-[var(--text-muted)]">{h}</th>
               ))}
             </tr>
@@ -59,10 +74,23 @@ export default function VendorOrdersPage() {
                 <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
                   {new Date(order.createdAt).toLocaleDateString("ar-IQ")}
                 </td>
+                <td className="px-4 py-3">
+                  {nextStatus[order.status] ? (
+                    <button
+                      onClick={() => statusMut.mutate({ id: order.id, status: nextStatus[order.status]!.s })}
+                      disabled={statusMut.isPending}
+                      className="text-xs px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {nextStatus[order.status]!.label}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-[var(--text-muted)]">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {!isLoading && !data?.data?.length && (
-              <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--text-muted)]">لا توجد طلبات بعد</td></tr>
+              <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--text-muted)]">لا توجد طلبات بعد</td></tr>
             )}
           </tbody>
         </table>

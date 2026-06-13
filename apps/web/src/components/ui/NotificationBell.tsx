@@ -122,6 +122,8 @@ export function NotificationBell() {
                   onClick={() => {
                     api.patch(`/api/notifications/${n.id}/read`)
                     qc.invalidateQueries({ queryKey: ["notifications"] })
+                    const link = n.data?.link || n.link
+                    if (link) { window.location.href = link }
                   }}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.bg} ${cfg.color}`}>

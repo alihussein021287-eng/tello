@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/db"
 import { authMiddleware, adminMiddleware } from "../middleware/auth"
+import { sendNotification } from "./notifications"
 
 export const adminStatsRoutes = new Hono()
 adminStatsRoutes.use("*", authMiddleware, adminMiddleware)
@@ -123,6 +124,27 @@ adminStatsRoutes.patch("/orders/:id/status", async (c) => {
   const { id }     = c.req.param()
   const { status } = await c.req.json()
   const order = await prisma.order.update({ where: { id }, data: { status } })
+  // إشعار الزبون بتغيّر الحالة
+  try {
+    const sNum = order.id.slice(-6).toUpperCase()
+    const map: Record<string, { t: string; b: string }> = {
+      CONFIRMED: { t: "Order confirmed", b: `تم تأكيد طلبك #${sNum} ✓` },
+      PREPARING: { t: "Order preparing", b: `جاري تحضير طلبك #${sNum} 📦` },
+      SHIPPING:  { t: "Order shipping", b: `طلبك #${sNum} بالطريق إليك 🚚` },
+      DELIVERED: { t: "Order delivered", b: `تم توصيل طلبك #${sNum} بنجاح ✓` },
+      CANCELLED: { t: "Order cancelled", b: `تم إلغاء طلبك #${sNum}` },
+    }
+    const m = map[status]
+    if (m) {
+      await sendNotification({
+        userId: order.userId, type: ("ORDER_" + status) as any,
+        title: m.t, body: m.b,
+        data: { orderId: order.id, link: `/account/orders/${order.id}` },
+      })
+    }
+  } catch (e: any) {
+    console.error("[order status notif] failed:", e.message)
+  }
   return c.json({ success: true, data: order })
 })
 
@@ -131,6 +153,8 @@ adminStatsRoutes.get("/products", async (c) => {
   const { search, page = "1", limit = "20" } = c.req.query()
   const skip  = (Number(page) - 1) * Number(limit)
   const where: any = {}
+  const statusF = c.req.query("status")
+  if (statusF) where.status = statusF
   if (search) where.OR = [
     { nameAr: { contains: search, mode: "insensitive" } },
     { name:   { contains: search, mode: "insensitive" } },
@@ -159,6 +183,47 @@ adminStatsRoutes.delete("/products/:id", async (c) => {
   return c.json({ success: true })
 })
 
+// موافقة على منتج بائع
+adminStatsRoutes.patch("/products/:id/approve", async (c) => {
+  const { id } = c.req.param()
+  const product = await prisma.product.update({
+    where: { id }, data: { status: "APPROVED", isActive: true },
+    include: { vendor: true },
+  })
+  try {
+    if (product.vendor?.userId) {
+      await sendNotification({
+        userId: product.vendor.userId, type: "VENDOR_APPROVED" as any,
+        title: "Product approved",
+        body: `تمت الموافقة على منتجك "${product.nameAr}" ✓ وأصبح ظاهراً للزبائن`,
+        data: { link: "/vendor/dashboard/products" },
+      })
+    }
+  } catch (e: any) { console.error("[approve notif]", e.message) }
+  return c.json({ success: true, data: product })
+})
+
+// رفض منتج بائع
+adminStatsRoutes.patch("/products/:id/reject", async (c) => {
+  const { id } = c.req.param()
+  const { reason } = await c.req.json().catch(() => ({ reason: "" }))
+  const product = await prisma.product.update({
+    where: { id }, data: { status: "REJECTED", isActive: false },
+    include: { vendor: true },
+  })
+  try {
+    if (product.vendor?.userId) {
+      await sendNotification({
+        userId: product.vendor.userId, type: "VENDOR_APPROVED" as any,
+        title: "Product rejected",
+        body: `تم رفض منتجك "${product.nameAr}"${reason ? " — السبب: " + reason : ""}`,
+        data: { link: "/vendor/dashboard/products" },
+      })
+    }
+  } catch (e: any) { console.error("[reject notif]", e.message) }
+  return c.json({ success: true, data: product })
+})
+
 // مستخدمين الأدمن
 adminStatsRoutes.get("/users", async (c) => {
   const { search, page = "1", limit = "20" } = c.req.query()
@@ -182,6 +247,12 @@ adminStatsRoutes.get("/users", async (c) => {
 // Admin product creation
 adminStatsRoutes.post("/products", async (c) => {
   const body = await c.req.json()
+  // رفض بلا اسم + فحص تكرار
+  const _pName = body.nameEn || body.name
+  const _pNameAr = body.nameAr || body.name
+  if (!_pName || !_pNameAr) return c.json({ success: false, message: "Product name required" }, 400)
+  const _dup = await prisma.product.findFirst({ where: { OR: [{ name: _pName }, { nameAr: _pNameAr }] } })
+  if (_dup) return c.json({ success: false, message: "Product already exists", skipped: true, data: _dup }, 200)
   const product = await prisma.product.create({
     data: {
       name:          body.name          || body.nameAr,
@@ -243,10 +314,16 @@ adminStatsRoutes.post("/ai-products", async (c) => {
 
   const category = await prisma.category.findFirst()
   
+  // رفض بلا اسم + فحص تكرار
+  const _pName = body.nameEn || body.name
+  const _pNameAr = body.nameAr || body.name
+  if (!_pName || !_pNameAr) return c.json({ success: false, message: "Product name required" }, 400)
+  const _dup = await prisma.product.findFirst({ where: { OR: [{ name: _pName }, { nameAr: _pNameAr }] } })
+  if (_dup) return c.json({ success: false, message: "Product already exists", skipped: true, data: _dup }, 200)
   const product = await prisma.product.create({
     data: {
-      name: body.nameEn || body.name || "New Product",
-      nameAr: body.nameAr || body.name || "منتج جديد",
+      name: _pName,
+      nameAr: _pNameAr,
       description: body.description || "",
       descriptionAr: body.descriptionAr || body.description || "",
       price: Number(body.price) || 50000,

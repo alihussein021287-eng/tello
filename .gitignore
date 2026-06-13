@@ -11,3 +11,13 @@ ios/
 
 .env
 node_modules/
+
+# نسخ احتياطية حساسة
+.env.bak
+.env.bak*
+*.bak_minio
+*.bak2
+
+*.bak
+*.bak2
+apps/_backups/

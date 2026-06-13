@@ -3,7 +3,7 @@ import { ExpoConfig, ConfigContext } from "expo/config"
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Tello",
-  owner: "tello-1",
+  owner: "lgalyi021287",
   slug: "tello-1",
   version: "1.0.0",
   orientation: "portrait",
@@ -12,7 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   splash: {
     image: "./src/assets/splash.png",
     resizeMode: "contain",
-    backgroundColor: "#1B4FD8",
+    backgroundColor: "#ffffff",
   },
   scheme: "tello",
   ios: {
@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     adaptiveIcon: {
       foregroundImage: "./src/assets/icon.png",
-      backgroundColor: "#1B4FD8",
+      backgroundColor: "#ffffff",
     },
     package: "com.fshsmart.tello",
   },
@@ -30,13 +30,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-font",
     "expo-secure-store",
-    [
-      "expo-splash-screen",
-      { image: "./src/assets/splash.png", backgroundColor: "#1B4FD8" },
-    ],
   ],
   extra: {
     apiUrl: process.env.API_URL || "https://api.fshsmart.com",
-    eas: { projectId: "8e3a8b3e-67b6-4c10-b0cf-f1200740680f" },
+    eas: { projectId: "b37ce26b-6485-46a2-b178-ebcb2fdf10fc" },
   },
 })

@@ -11,7 +11,7 @@ productRoutes.get("/", async (c) => {
   } = c.req.query()
 
   const skip = (Number(page) - 1) * Number(limit)
-  const where: any = { isActive: true }
+  const where: any = { isActive: true, status: "APPROVED" }
 
   if (vendorId)  where.vendorId  = vendorId
   if (category)  where.categoryId = category

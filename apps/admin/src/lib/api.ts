@@ -33,6 +33,8 @@ export const adminApi = {
     list:   (p?: any)              => api.get("/api/admin/products",      { params: p }).then(r => r.data),
     update: (id: string, d: any)   => api.patch(`/api/admin/products/${id}`, d).then(r => r.data),
     delete: (id: string)           => api.delete(`/api/admin/products/${id}`).then(r => r.data),
+    approve: (id: string)          => api.patch(`/api/admin/products/${id}/approve`).then(r => r.data),
+    reject:  (id: string, reason?: string) => api.patch(`/api/admin/products/${id}/reject`, { reason }).then(r => r.data),
   },
 
   // Orders
@@ -65,5 +67,7 @@ export const adminApi = {
     insights:     (period: string) => api.get(`/api/ai/admin/insights/${period}`).then(r => r.data),
     generateDesc: (d: any)         => api.post("/api/ai/admin/generate-description", d).then(r => r.data),
     autoTag:      (d: any)         => api.post("/api/ai/admin/auto-tag", d).then(r => r.data),
+    reviewProduct: (d: any)        => api.post("/api/ai/admin/review-product", d).then(r => r.data),
+    ask:          (question: string) => api.post("/api/ai/admin/ask", { question }).then(r => r.data),
   },
 }

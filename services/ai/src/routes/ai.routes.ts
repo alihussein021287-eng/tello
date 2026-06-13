@@ -7,6 +7,11 @@ import {
   generateProductDescription,
   autoTagProduct,
   detectOrderAnomalies,
+  reviewProduct,
+  generateFullProduct,
+  askAdminAI,
+  improveDescription,
+  generateProductImage,
 } from "../agents/admin-ai"
 
 export const aiRoutes = new Hono()
@@ -135,5 +140,62 @@ aiRoutes.post(
     const orderId = c.req.param("orderId")
     const result = await detectOrderAnomalies(orderId)
     return c.json({ success: true, ...result })
+  }
+)
+
+// ===== مراجعة منتج ذكية =====
+aiRoutes.post(
+  "/admin/review-product",
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    const result = await reviewProduct(body)
+    return c.json({ success: true, data: result })
+  }
+)
+
+// ===== توليد منتج كامل =====
+aiRoutes.post(
+  "/admin/generate-product",
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    if (!body.name) return c.json({ success: false, message: "الاسم مطلوب" }, 400)
+    const result = await generateFullProduct(body)
+    return c.json({ success: true, data: result })
+  }
+)
+
+// ===== مساعد الأدمن التفاعلي =====
+aiRoutes.post(
+  "/admin/ask",
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    if (!body.question) return c.json({ success: false, message: "السؤال مطلوب" }, 400)
+    const answer = await askAdminAI(body.question)
+    return c.json({ success: true, data: { answer } })
+  }
+)
+
+// ===== تحسين وترجمة الوصف =====
+aiRoutes.post(
+  "/admin/improve-description",
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    const result = await improveDescription(body)
+    return c.json({ success: true, data: result })
+  }
+)
+
+// ===== توليد صورة منتج بالـ AI =====
+aiRoutes.post(
+  "/admin/generate-image",
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    if (!body.name) return c.json({ success: false, message: "الاسم مطلوب" }, 400)
+    try {
+      const result = await generateProductImage(body)
+      return c.json({ success: true, data: result })
+    } catch (e: any) {
+      return c.json({ success: false, message: e.message || "تعذّر توليد الصورة" }, 500)
+    }
   }
 )

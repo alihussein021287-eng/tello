@@ -40,9 +40,9 @@ export default function AboutPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { value: "10K+",  label: "منتج متاح" },
-            { value: "500+",  label: "بائع موثوق" },
-            { value: "50K+",  label: "زبون سعيد" },
+            { value: "🛍️",  label: "منتجات أصلية ومتنوّعة" },
+            { value: "✓",   label: "بائعون موثوقون" },
+            { value: "🚀",  label: "توصيل سريع لكل العراق" },
           ].map(({ value, label }) => (
             <div key={label} className="card p-5 text-center">
               <p className="text-2xl font-black text-primary-500">{value}</p>

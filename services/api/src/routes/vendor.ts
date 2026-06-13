@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
 import { prisma } from "../lib/db"
 import { authMiddleware } from "../middleware/auth"
+import { sendNotification } from "./notifications"
 
 export const vendorRoutes = new Hono()
 vendorRoutes.use("*", authMiddleware)
@@ -50,6 +51,19 @@ vendorRoutes.post(
       data: { userId, ...body },
     })
 
+    // إشعار الأدمن ببائع جديد
+    try {
+      const applicant = await prisma.user.findUnique({ where: { id: userId } })
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN" } })
+      for (const a of admins) {
+        await sendNotification({
+          userId: a.id, type: "VENDOR_APPROVED" as any,
+          title: "New vendor application",
+          body: `بائع جديد (${applicant?.name || "مستخدم"}) قدّم طلب انضمام — راجعه`,
+          data: { link: "/dashboard/vendors" },
+        })
+      }
+    } catch (e: any) { console.error("[vendor app notif]", e.message) }
     return c.json({ success: true, data: application }, 201)
   }
 )
@@ -132,12 +146,79 @@ vendorRoutes.post(
     const body     = c.req.valid("json")
 
     const product = await prisma.product.create({
-      data: { ...body, vendorId, images: body.images || [] },
+      data: { ...body, vendorId, images: body.images || [], status: "PENDING", isActive: false },
     })
 
+    try {
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN" } })
+      for (const a of admins) {
+        await sendNotification({ userId: a.id, type: "VENDOR_APPROVED" as any, title: "New product pending", body: `منتج جديد "${body.nameAr}" بانتظار مراجعتك`, data: { link: "/dashboard/products" } })
+      }
+    } catch (e: any) { console.error("[product pending notif]", e.message) }
     return c.json({ success: true, data: product }, 201)
   }
 )
+
+// استيراد منتجات بالجملة (Excel/API) — كلها PENDING للموافقة
+vendorRoutes.post("/products/bulk", vendorOnly, async (c) => {
+  const vendorId = c.get("vendorId")
+  const body = await c.req.json()
+  const items = Array.isArray(body.products) ? body.products : []
+  if (!items.length) return c.json({ success: false, message: "لا توجد منتجات" }, 400)
+  if (items.length > 500) return c.json({ success: false, message: "الحد الأقصى 500 منتج بالمرة" }, 400)
+
+  const cats = await prisma.category.findMany({ select: { id: true, name: true, nameAr: true } })
+  const findCat = (v: string) => {
+    if (!v) return cats[0]?.id
+    const m = cats.find(c2 => c2.id === v || c2.name?.toLowerCase() === String(v).toLowerCase() || c2.nameAr === v)
+    return m?.id || cats[0]?.id
+  }
+
+  const results = { created: 0, skipped: 0, errors: [] as string[] }
+  for (let i = 0; i < items.length; i++) {
+    const p = items[i]
+    const nameAr = (p.nameAr || p.name || "").trim()
+    const name   = (p.name || p.nameAr || "").trim()
+    const price  = Number(p.price)
+    if (!nameAr || !name) { results.skipped++; results.errors.push(`صف ${i+1}: بلا اسم`); continue }
+    if (!price || price <= 0) { results.skipped++; results.errors.push(`صف ${i+1}: سعر غير صالح`); continue }
+    // تجاهل المكرر (نفس الاسم لنفس البائع)
+    const dup = await prisma.product.findFirst({ where: { vendorId, OR: [{ name }, { nameAr }] } })
+    if (dup) { results.skipped++; results.errors.push(`صف ${i+1}: "${nameAr}" موجود مسبقاً`); continue }
+    try {
+      await prisma.product.create({
+        data: {
+          name, nameAr,
+          description: p.description || "", descriptionAr: p.descriptionAr || p.description || "",
+          price, comparePrice: p.comparePrice ? Number(p.comparePrice) : null,
+          stock: Number(p.stock) || 0,
+          categoryId: findCat(p.category || p.categoryId),
+          vendorId, images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
+          status: "PENDING", isActive: false,
+        },
+      })
+      results.created++
+    } catch (e: any) {
+      results.skipped++; results.errors.push(`صف ${i+1}: ${e.message}`)
+    }
+  }
+
+  // إشعار الأدمن بدفعة منتجات للمراجعة
+  if (results.created > 0) {
+    try {
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN" } })
+      for (const a of admins) {
+        await sendNotification({
+          userId: a.id, type: "VENDOR_APPROVED" as any,
+          title: "Bulk products pending",
+          body: `بائع استورد ${results.created} منتج بانتظار مراجعتك`,
+          data: { link: "/dashboard/products" },
+        })
+      }
+    } catch {}
+  }
+  return c.json({ success: true, data: results })
+})
 
 vendorRoutes.patch(
   "/products/:id",
@@ -199,6 +280,39 @@ vendorRoutes.get("/orders", vendorOnly, async (c) => {
 // ══════════════════════════════════════════════════════════
 // إحصائيات البائع
 // ══════════════════════════════════════════════════════════
+// البائع يغيّر حالة طلب يخص منتجاته
+vendorRoutes.patch("/orders/:id/status", vendorOnly, async (c) => {
+  const vendorId = c.get("vendorId")
+  const { id }   = c.req.param()
+  const { status } = await c.req.json()
+  // البائع يسمح له بحالات محددة فقط
+  const allowed = ["CONFIRMED", "PREPARING", "SHIPPING"]
+  if (!allowed.includes(status)) {
+    return c.json({ success: false, message: "حالة غير مسموحة" }, 400)
+  }
+  // تأكد الطلب فيه منتج من منتجات هذا البائع (أمان)
+  const order = await prisma.order.findFirst({
+    where: { id, items: { some: { product: { vendorId } } } },
+  })
+  if (!order) return c.json({ success: false, message: "الطلب غير موجود" }, 404)
+  const updated = await prisma.order.update({ where: { id }, data: { status } })
+  // إشعار الزبون
+  try {
+    const sNum = id.slice(-6).toUpperCase()
+    const map: Record<string, string> = {
+      CONFIRMED: `تم تأكيد طلبك #${sNum} ✓`,
+      PREPARING: `جاري تحضير طلبك #${sNum} 📦`,
+      SHIPPING:  `طلبك #${sNum} بالطريق إليك 🚚`,
+    }
+    await sendNotification({
+      userId: order.userId, type: ("ORDER_" + status) as any,
+      title: "Order update", body: map[status],
+      data: { orderId: id, link: `/account/orders/${id}` },
+    })
+  } catch (e: any) { console.error("[vendor order status notif]", e.message) }
+  return c.json({ success: true, data: updated })
+})
+
 vendorRoutes.get("/stats", vendorOnly, async (c) => {
   const vendorId = c.get("vendorId")
   const now      = new Date()

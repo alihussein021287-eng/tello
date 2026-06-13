@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { LayoutDashboard, Package, ShoppingCart, Settings, Store, BarChart2, Menu, X } from "lucide-react"
 import { useAuthStore } from "@/store"
+import { NotificationBell } from "@/components/ui/NotificationBell"
 
 const NAV = [
   { href: "/vendor/dashboard",          icon: LayoutDashboard, label: "الرئيسية" },
@@ -75,12 +76,15 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
 
       {/* Main */}
       <main className="flex-1 bg-[var(--bg-soft)] overflow-y-auto">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between px-4 h-14 bg-[var(--bg)] border-b border-[var(--border)] sticky top-0 z-30">
-          <span className="font-bold text-sm text-[var(--text)]">داشبورد البائع</span>
-          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-[var(--bg-soft)] rounded-lg">
-            <Menu className="w-5 h-5 text-[var(--text)]" />
-          </button>
+        {/* Top header — جرس الإشعارات */}
+        <div className="flex items-center justify-between px-4 h-14 bg-[var(--bg)] border-b border-[var(--border)] sticky top-0 z-30">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-[var(--bg-soft)] rounded-lg">
+              <Menu className="w-5 h-5 text-[var(--text)]" />
+            </button>
+            <span className="font-bold text-sm text-[var(--text)]">داشبورد البائع</span>
+          </div>
+          <NotificationBell />
         </div>
         {children}
       </main>

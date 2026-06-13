@@ -194,3 +194,217 @@ export async function detectOrderAnomalies(orderId: string): Promise<{
     riskScore: Math.min(riskScore, 100),
   }
 }
+
+/**
+ * مراجعة منتج بائع ذكية — توصية للأدمن قبل الموافقة
+ */
+export async function reviewProduct(p: {
+  nameAr: string; name?: string; description?: string;
+  price: number; comparePrice?: number; images?: string[]; category?: string;
+}): Promise<{
+  recommendation: "approve" | "review" | "reject"
+  score: number
+  summary: string
+  issues: string[]
+}> {
+  const response = await claude.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 512,
+    messages: [
+      {
+        role: "user",
+        content: `
+أنت مراجع جودة لمتجر إلكتروني عراقي متعدد البائعين. افحص هذا المنتج المقدّم من بائع:
+
+الاسم (عربي): ${p.nameAr}
+الاسم (إنجليزي): ${p.name || "—"}
+الوصف: ${p.description || "(فارغ)"}
+السعر: ${p.price} دينار عراقي
+السعر قبل الخصم: ${p.comparePrice || "—"}
+عدد الصور: ${p.images?.length || 0}
+الفئة: ${p.category || "—"}
+
+قيّم المنتج وأرجع فقط JSON بهذا الشكل:
+{
+  "recommendation": "approve" أو "review" أو "reject",
+  "score": رقم من 0 إلى 100 لجودة المنتج,
+  "summary": "جملة مختصرة بالعربي عن المنتج وقرارك",
+  "issues": ["مشكلة 1", "مشكلة 2"]
+}
+
+معايير التقييم:
+- الاسم واضح ومفهوم؟
+- الوصف كافٍ (مو فارغ ولا قصير جداً)؟
+- السعر منطقي (مو 0 ولا غريب)؟
+- في صور؟
+- مؤشرات منتج مزيّف/مضلل/مخالف؟
+إذا كل شي ممتاز: approve. إذا في نواقص بسيطة: review. إذا مخالف/مشبوه/ناقص جداً: reject.
+        `.trim(),
+      },
+    ],
+  })
+  const text = response.content
+    .filter((b) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("")
+  try {
+    const clean = text.replace(/```json|```/g, "").trim()
+    return JSON.parse(clean)
+  } catch {
+    return { recommendation: "review", score: 50, summary: "تعذّر التحليل التلقائي", issues: [] }
+  }
+}
+
+/**
+ * توليد منتج كامل من اسم بسيط — للبائع
+ */
+export async function generateFullProduct(input: { name: string }): Promise<{
+  nameAr: string; name: string; descriptionAr: string; description: string;
+  suggestedCategoryId: string; suggestedCategory: string; suggestedPrice: number;
+}> {
+  const categories = await prisma.category.findMany({ select: { id: true, name: true, nameAr: true } })
+  const response = await claude.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 700,
+    messages: [
+      {
+        role: "user",
+        content: `
+أنت خبير في التجارة الإلكترونية بالعراق. بائع أدخل اسم منتج بسيط: "${input.name}"
+
+ولّد بيانات منتج كاملة احترافية. الأقسام المتاحة:
+${JSON.stringify(categories)}
+
+أرجع فقط JSON بهذا الشكل:
+{
+  "nameAr": "اسم عربي واضح وجذّاب",
+  "name": "English name",
+  "descriptionAr": "وصف تسويقي بالعربي 2-3 جمل يبرز المميزات",
+  "description": "Marketing description in English 2-3 sentences",
+  "suggestedCategoryId": "id القسم الأنسب من القائمة",
+  "suggestedCategory": "اسم القسم بالعربي",
+  "suggestedPrice": سعر تقديري بالدينار العراقي (رقم فقط، حسب السوق العراقي)
+}
+اختر القسم الصحيح بعناية حسب نوع المنتج.
+        `.trim(),
+      },
+    ],
+  })
+  const text = response.content.filter((b) => b.type === "text").map((b: any) => b.text).join("")
+  try {
+    const clean = text.replace(/```json|```/g, "").trim()
+    const parsed = JSON.parse(clean)
+    // تأكد القسم صحيح
+    const validCat = categories.find(c => c.id === parsed.suggestedCategoryId)
+    if (!validCat && categories[0]) {
+      parsed.suggestedCategoryId = categories[0].id
+      parsed.suggestedCategory = categories[0].nameAr
+    }
+    return parsed
+  } catch {
+    return {
+      nameAr: input.name, name: input.name, descriptionAr: "", description: "",
+      suggestedCategoryId: categories[0]?.id || "", suggestedCategory: categories[0]?.nameAr || "",
+      suggestedPrice: 0,
+    }
+  }
+}
+
+/**
+ * مساعد الأدمن التفاعلي — يجاوب أسئلة بالعربي من بيانات المتجر الحقيقية
+ */
+export async function askAdminAI(question: string): Promise<string> {
+  return runAgent({
+    messages: [
+      {
+        role: "user",
+        content: `سؤال من مدير المتجر: ${question}
+
+استخدم الأدوات المتاحة (get_sales_analytics، get_low_stock_products، search_products، get_categories) لجلب البيانات الحقيقية وأجب بدقة.
+أجب بالعربية بشكل مختصر وعملي ومباشر. إذا كانت أرقام، رتّبها بوضوح.`,
+      },
+    ],
+    systemExtra: "أنت مساعد ذكي لمدير متجر إلكتروني عراقي. تجاوب من البيانات الفعلية فقط، ولا تخمّن. ردودك مختصرة وعملية بالعربية.",
+  })
+}
+
+/**
+ * تحسين وترجمة وصف منتج — للبائع
+ */
+export async function improveDescription(input: {
+  nameAr?: string; currentAr?: string; currentEn?: string;
+}): Promise<{ descriptionAr: string; description: string }> {
+  const response = await claude.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 600,
+    messages: [
+      {
+        role: "user",
+        content: `
+أنت كاتب محتوى تسويقي لمتجر عراقي. حسّن وصف هذا المنتج واجعله جذّاباً واحترافياً، وترجمه للغتين.
+
+اسم المنتج: ${input.nameAr || "—"}
+الوصف الحالي بالعربي: ${input.currentAr || "(فارغ)"}
+الوصف الحالي بالإنجليزي: ${input.currentEn || "(فارغ)"}
+
+أرجع فقط JSON:
+{
+  "descriptionAr": "وصف عربي محسّن وجذّاب 2-3 جمل يبرز المميزات والفوائد",
+  "description": "Improved attractive English description 2-3 sentences"
+}
+إذا الوصف فارغ، اكتب وصفاً مناسباً من اسم المنتج.
+        `.trim(),
+      },
+    ],
+  })
+  const text = response.content.filter((b) => b.type === "text").map((b: any) => b.text).join("")
+  try {
+    const clean = text.replace(/```json|```/g, "").trim()
+    return JSON.parse(clean)
+  } catch {
+    return { descriptionAr: input.currentAr || "", description: input.currentEn || "" }
+  }
+}
+
+/**
+ * توليد صورة منتج بالذكاء الاصطناعي — OpenAI GPT Image
+ */
+export async function generateProductImage(input: { name: string; category?: string; descriptionAr?: string }): Promise<{
+  imageUrl: string; prompt: string;
+}> {
+  // 1) Claude يكتب prompt بصري احترافي
+  const promptRes = await claude.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 200,
+    messages: [{
+      role: "user",
+      content: `منتج: "${input.name}"${input.category ? ` (قسم: ${input.category})` : ""}${input.descriptionAr ? ` — ${input.descriptionAr}` : ""}
+
+اكتب prompt إنجليزي قصير ودقيق لتوليد صورة منتج احترافية لمتجر إلكتروني (خلفية بيضاء نظيفة، إضاءة استوديو، زاوية واضحة). أرجع الـ prompt فقط بدون أي شيء آخر.`,
+    }],
+  })
+  const imgPrompt = promptRes.content.filter((b) => b.type === "text").map((b: any) => b.text).join("").trim().slice(0, 400)
+
+  // 2) OpenAI GPT Image يولّد الصورة
+  const oaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt: imgPrompt,
+      n: 1,
+      size: "1024x1024",
+    }),
+  })
+  const oaiData: any = await oaiRes.json()
+  if (!oaiRes.ok) {
+    throw new Error(oaiData?.error?.message || "OpenAI image error")
+  }
+  // GPT Image يرجع base64
+  const b64 = oaiData?.data?.[0]?.b64_json
+  const url = oaiData?.data?.[0]?.url
+  return { imageUrl: url || (b64 ? `data:image/png;base64,${b64}` : ""), prompt: imgPrompt }
+}
