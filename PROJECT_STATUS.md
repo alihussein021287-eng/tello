@@ -1,54 +1,76 @@
-# 🏺 Tello — مكتمل 100%
-> نسخة 1.0 النهائية — fshsmart.com | 160+ ملف
+# 📋 Tello — حالة المشروع (مرجع كامل)
 
-## ✅ كل شيء مكتمل
+> آخر تحديث: 2026-06-13 | منصة تجارة إلكترونية multi-vendor عراقية
 
-### Backend (services/api/) — 18 route
-auth, users+addresses, products+filters, categories+CRUD,
-reviews, wishlist, orders, payment/ZainCash, coupons,
-vendor, vendor-public, admin-stats, admin-vendor,
-admin-ext (commissions+reviews), upload, notifications,
-reports, push
+## 🌐 معلومات أساسية
+- **الموقع:** fshsmart.com | **API:** api.fshsmart.com | **الأدمن:** admin.fshsmart.com
+- **التخزين:** storage.fshsmart.com (MinIO) | **n8n:** n8n.fshsmart.com
+- **المسار:** /opt/tello | **GitHub:** github.com/alihussein021287-eng/tello
 
-### Web App (apps/web/) — 25+ صفحة
-الرئيسية, منتجات+بحث متقدم, تفاصيل+تقييمات+مفضلة,
-سلة, checkout 3 خطوات, نتيجة دفع, طلباتي+تتبع,
-إعدادات حساب, مفضلة, متجر البائع العام,
-تسجيل بائع, داشبورد بائع (منتجات+طلبات+تقارير+إعدادات),
-تسجيل/دخول, مساعدة, من نحن, توصيل, إرجاع, خصوصية, شروط,
-404+500+loading
+## 🏗️ التقنيات
+- **Backend:** Bun + Hono + Prisma + PostgreSQL + Redis (services/api)
+- **AI:** خدمة منفصلة (services/ai) — Claude + OpenAI GPT Image، بورت 4001
+- **Frontend:** Next.js 15 (apps/web) + لوحة أدمن (apps/admin)
+- **Mobile:** React Native + Expo (apps/mobile + apps/vendor-mobile)
+- **Infra:** Docker Compose + Nginx + Let's Encrypt SSL
 
-### Admin (apps/admin/) — 12 صفحة
-الرئيسية (بيانات حقيقية), تحليلات+رسوم, منتجات,
-أقسام (CRUD), طلبات, مستخدمين, بائعين,
-عمولات, كوبونات, تقييمات, مركز الذكاء AI, إعدادات
+## 🔑 أوامر مهمة
+- DB: `docker compose exec -T postgres psql -U tello -d tello_db`
+- بناء خدمة: `docker compose up -d --build [api|web|admin|ai]`
+- Prisma push: حاوية node مؤقتة على tello_tello-network
+- MinIO: المستخدم tello_minio / tello_minio_pass
 
-### Mobile (apps/mobile/) — 12 شاشة
-الرئيسية, بحث ذكي+AI, سلة, إشعارات+push,
-حساب, منتجات, تفاصيل منتج, طلباتي+تتبع, مفضلة, AI chat
+## ✅ المنجز (محدّث)
 
-### AI Service (services/ai/) — كامل
-Agentic loop, مساعد تسوق, بحث ذكي, توصيات,
-تحليل مبيعات, توليد وصف, كشف احتيال
+### نظام الإشعارات (Redis+SSE) — مكتمل ومُختبَر
+- جرس لكل الأطراف: الزبون (جرس الموقع)، البائع (جرس الداشبورد)، الأدمن (جرس اللوحة)
+- أحداث: طلب جديد، تغيير حالة، بائع جديد، منتج جديد
+- ضغط الإشعار = تنقّل سلس + تعليم مقروء
+- ملفات: services/api/src/routes/notifications.ts، NotificationBell.tsx، Topbar.tsx
 
-### DevOps
-Docker Compose (7 services), Nginx+SSL (4 subdomains),
-tello-deploy.sh, setup-vps.sh, .env.example
+### موافقة المنتجات — مكتمل ومُختبَر
+- حقل Product.status (PENDING/APPROVED/REJECTED)
+- منتج البائع → PENDING (مخفي) + إشعار الأدمن
+- الموقع يعرض APPROVED فقط
+- صفحة الأدمن: تبويبات + أزرار موافقة/رفض
 
-## 🚀 للتشغيل
-```bash
-scp tello-project.zip root@IP:/root/
-bash tello-deploy.sh install   # أول مرة
-bash tello-deploy.sh update    # بعد كل تعديل
-```
+### إدارة البائع — مكتمل
+- البائع يغيّر حالة طلبه (CONFIRMED/PREPARING/SHIPPING) + إشعار الزبون
+- استيراد بالجملة عبر CSV (POST /api/vendor/products/bulk)
 
-## 🔑 المفاتيح المطلوبة
-- ANTHROPIC_API_KEY → console.anthropic.com
-- ZAINCASH_* → ZainCash Business Portal
+### الذكاء الاصطناعي (5 ميزات) — مكتمل ومُختبَر
+1. مراجعة منتج ذكية (POST /api/ai/admin/review-product) — توصية للأدمن
+2. توليد منتج كامل (POST /api/ai/admin/generate-product) — اسم→كل التفاصيل
+3. مساعد أدمن تفاعلي (POST /api/ai/admin/ask) — يقرأ بيانات المتجر
+4. تحسين/ترجمة الوصف (POST /api/ai/admin/improve-description)
+5. توليد صور المنتجات (POST /api/ai/admin/generate-image) — Claude + GPT Image → MinIO
+- كلها بفورم البائع + لوحة الأدمن
 
-## 🌱 مستقبلي (اختياري)
-- Live Chat بين زبون وبائع
-- Loyalty Points (نقاط ولاء)
-- تطبيق البائع المنفصل
-- Dropshipping integration
-- Multi-currency (USD+IQD)
+### إصلاحات مهمة
+- تطابق بيانات MinIO (رفع الصور كان معطّلاً تماماً)
+- زيادة client_max_body_size لـ api.fshsmart.com (Nginx) → 20M
+- timeout axios للطلبات الـ AI → 60-120 ثانية
+
+### سابقاً
+- تنظيف الموقع (مكررات، صور، تخفيضات، إحصائيات)
+- واتساب تأكيد الطلب (n8n + Twilio)
+
+## ⚠️ أمان — مطلوب تغييره (انكشف بالمحادثات)
+- [ ] Twilio Auth Token
+- [ ] كلمة سر الأدمن (admin@fshsmart.com)
+- [ ] x-internal-key
+- [ ] مراقبة رصيد OpenAI (~$0.04/صورة)
+
+## 🔮 أفكار مستقبلية (لم تُنفّذ)
+- تقرير أرباح دقيق للبائع (مبيعات/عمولة/صافي)
+- تنبيه مخزون منخفض (إشعار للبائع)
+- صفحة متجر البائع العامة (/store/[vendorId])
+- موافقة/رفض البائعين الجدد (مثل المنتجات)
+- نظام سحب الأرباح (payout)
+- ربط API مباشر للبائعين (المرحلة 2 من الاستيراد)
+- إصلاح APK الموبايل (blue screen — expo-build-properties)
+
+## 📝 ملاحظات
+- كل العمل الفعلي على VPS (مو بيئة Claude)
+- اللغة: عربي عراقي
+- بعد كل تعديل: rebuild الخدمة المعنية
