@@ -5,6 +5,9 @@ import { logger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { authRoutes }         from "./routes/auth"
 import { productRoutes }      from "./routes/products"
+import { propertyRoutes }     from "./routes/properties"
+import { propertyOwnerRoutes } from "./routes/property-owner"
+import { bookingRoutes }       from "./routes/bookings"
 import { orderRoutes }        from "./routes/orders"
 import { categoryRoutes }     from "./routes/categories"
 import { userRoutes }         from "./routes/users"
@@ -58,6 +61,10 @@ app.route("/currency",      currencyRoutes)
 // ── Vendor ────────────────────────────────────────────────
 app.route("/vendor/public", vendorPublicRoutes)
 app.route("/vendor",        vendorRoutes)
+// ── منصة الحجوزات ──
+app.route("/properties",     propertyRoutes)
+app.route("/property-owner", propertyOwnerRoutes)
+app.route("/bookings",       bookingRoutes)
 
 // ── Admin ─────────────────────────────────────────────────
 

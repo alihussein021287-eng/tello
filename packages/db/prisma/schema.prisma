@@ -58,6 +58,9 @@ model User {
   loyaltyTxns        LoyaltyTransaction[]
   chatConversations  ChatConversation[]
   notifications      Notification[]
+  propertyOwner    PropertyOwner?   @relation("UserPropertyOwner")
+  bookings         Booking[]        @relation("UserBookings")
+  propertyReviews  PropertyReview[] @relation("UserPropertyReviews")
 }
 
 model Session {
@@ -368,3 +371,112 @@ enum ProductStatus {
   APPROVED
   REJECTED
 }
+
+// ═══════════════════════════════════════════
+// منصة الحجوزات (Booking Platform)
+// ═══════════════════════════════════════════
+
+enum PropertyType {
+  HOTEL          // فندق
+  CHALET         // شاليه
+  APARTMENT      // شقة
+  HOUSE          // بيت
+  FARM           // مزرعة
+  HALL           // قاعة أعراس
+}
+
+enum PropertyStatus {
+  PENDING        // بانتظار موافقة الأدمن
+  APPROVED       // معتمد وظاهر
+  REJECTED       // مرفوض
+  INACTIVE       // معطّل مؤقتاً
+}
+
+enum BookingStatus {
+  PENDING        // بانتظار تأكيد المالك
+  CONFIRMED      // مؤكد
+  CHECKED_IN     // تم الدخول
+  COMPLETED      // مكتمل
+  CANCELLED      // ملغي
+}
+
+// مالك العقار (يشبه Vendor لكن للحجوزات)
+model PropertyOwner {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation("UserPropertyOwner", fields: [userId], references: [id])
+  storeName   String   // اسم المكتب/الجهة
+  phone       String
+  isVerified  Boolean  @default(false)
+  commission  Float    @default(10)  // نسبة عمولة المنصة %
+  createdAt   DateTime @default(now())
+  properties  Property[]
+}
+
+// العقار (فندق/شاليه/شقة/بيت/مزرعة/قاعة)
+model Property {
+  id            String         @id @default(cuid())
+  type          PropertyType
+  title         String         // العنوان
+  titleAr       String
+  description   String
+  descriptionAr String
+  city          String         // المحافظة/المدينة
+  area          String?        // المنطقة
+  address       String?        // العنوان التفصيلي
+  latitude      Float?         // الموقع على الخريطة
+  longitude     Float?
+  pricePerNight Float          // السعر لليلة/اليوم
+  maxGuests     Int            @default(2)  // عدد الأشخاص
+  bedrooms      Int            @default(1)
+  bathrooms     Int            @default(1)
+  amenities     String[]       // المرافق (واي فاي، مسبح، موقف...)
+  images        String[]
+  status        PropertyStatus @default(PENDING)
+  isActive      Boolean        @default(true)
+  ownerId       String
+  owner         PropertyOwner  @relation(fields: [ownerId], references: [id])
+  bookings      Booking[]
+  reviews       PropertyReview[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([type, status])
+  @@index([city])
+}
+
+// الحجز
+model Booking {
+  id          String        @id @default(cuid())
+  propertyId  String
+  property    Property      @relation(fields: [propertyId], references: [id])
+  userId      String
+  user        User          @relation("UserBookings", fields: [userId], references: [id])
+  checkIn     DateTime      // تاريخ الدخول
+  checkOut    DateTime      // تاريخ الخروج
+  guests      Int           @default(1)
+  nights      Int           // عدد الليالي
+  totalPrice  Float
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([propertyId, checkIn, checkOut])
+  @@index([userId])
+}
+
+// تقييم العقار
+model PropertyReview {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id])
+  userId      String
+  user        User     @relation("UserPropertyReviews", fields: [userId], references: [id])
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  @@index([propertyId])
+}
+

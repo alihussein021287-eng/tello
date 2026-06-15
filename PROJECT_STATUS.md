@@ -74,3 +74,42 @@
 - كل العمل الفعلي على VPS (مو بيئة Claude)
 - اللغة: عربي عراقي
 - بعد كل تعديل: rebuild الخدمة المعنية
+
+---
+
+# 🏨 منصة الحجوزات (Booking) — جديد (2026-06-14)
+
+## القرار المعماري
+- **monorepo** على نفس السيرفر/الدومين/قاعدة البيانات (مشترك مع Tello)
+- جداول بـ prefix منفصلة (Property/Booking) — لا تتعارض مع Tello (Product/Order)
+- نفس User يخدم الاثنين (زبون متجر = زبون حجوزات)
+
+## نموذج البيانات (مطبّق ✓)
+- **PropertyType:** HOTEL/CHALET/APARTMENT/HOUSE/FARM/HALL (نوع واحد يخدم الكل)
+- **PropertyStatus:** PENDING/APPROVED/REJECTED/INACTIVE
+- **BookingStatus:** PENDING/CONFIRMED/CHECKED_IN/COMPLETED/CANCELLED
+- **Models:** PropertyOwner، Property، Booking، PropertyReview
+- مربوطة بـ User (propertyOwner/bookings/propertyReviews)
+
+## API (مبني ومُختبَر ✓) — بنفس خدمة api الموجودة
+- **/api/properties** (عام): قائمة + بحث/فلترة (type/city/price/guests) + تفاصيل + التحقق من التوفّر
+- **/api/property-owner** (ownerOnly): تسجيل + إضافة/تعديل/حذف عقار (PENDING) + حجوزاته + تغيير حالة
+- **/api/bookings** (مصادق): إنشاء حجز (مع منع التعارض) + حجوزاتي + تفاصيل + إلغاء
+- ملفات: services/api/src/routes/{properties,property-owner,bookings}.ts
+- مسجّلة بـ index.ts
+
+## مُختبَر بنجاح ✓
+- تسجيل مالك + إضافة شاليه + موافقة + ظهور بالقائمة
+- حجز (حساب الليالي والسعر تلقائي) + **منع التعارض (الحجز المزدوج مرفوض)**
+
+## الناقص (الخطوات الجاية)
+- [ ] الواجهة (Frontend): صفحات تصفّح/بحث/حجز للزبون
+- [ ] لوحة المالك (إدارة عقارات + حجوزات)
+- [ ] صفحة موافقة العقارات بلوحة الأدمن
+- [ ] subdomain: booking.fshsmart.com (Nginx + SSL)
+- [ ] إشعارات الحجز (نعيد استخدام نظام Tello)
+- [ ] دفع/عربون
+- [ ] المراحل التالية: سيارات، قاعات، دليل سياحي
+
+## ملاحظة
+- العقار التجريبي "شاليه فاخر على البحيرة" (CHALET، بغداد/الحبانية) موجود APPROVED للعرض
