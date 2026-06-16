@@ -5,7 +5,7 @@ export const propertyRoutes = new Hono()
 
 // قائمة العقارات (عامة) — بحث وفلترة
 propertyRoutes.get("/", async (c) => {
-  const { type, city, minPrice, maxPrice, guests, search, page = "1", limit = "20" } = c.req.query()
+  const { type, city, minPrice, maxPrice, guests, search, sort = "newest", page = "1", limit = "20" } = c.req.query()
   const skip = (Number(page) - 1) * Number(limit)
 
   const where: any = { status: "APPROVED", isActive: true }
@@ -23,6 +23,10 @@ propertyRoutes.get("/", async (c) => {
     { area:    { contains: search, mode: "insensitive" } },
   ]
 
+  let orderBy: any = { createdAt: "desc" }
+  if (sort === "price_asc")  orderBy = { pricePerNight: "asc" }
+  if (sort === "price_desc") orderBy = { pricePerNight: "desc" }
+
   const [properties, total] = await Promise.all([
     prisma.property.findMany({
       where, skip, take: Number(limit),
@@ -30,7 +34,7 @@ propertyRoutes.get("/", async (c) => {
         owner: { select: { storeName: true } },
         reviews: { select: { rating: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
     }),
     prisma.property.count({ where }),
   ])
@@ -87,3 +91,16 @@ propertyRoutes.get("/:id/availability", async (c) => {
 
   return c.json({ success: true, data: { available: !conflict } })
 })
+
+// عرض تقييمات عقار (عام)
+propertyRoutes.get("/:id/reviews", async (c) => {
+  const { id } = c.req.param()
+  const reviews = await prisma.propertyReview.findMany({
+    where: { propertyId: id },
+    include: { user: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  })
+  return c.json({ success: true, data: reviews })
+})
+

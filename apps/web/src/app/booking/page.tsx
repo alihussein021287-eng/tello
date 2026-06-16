@@ -24,11 +24,13 @@ export default function BookingPage() {
   const [city, setCity] = useState("")
   const [search, setSearch] = useState("")
   const [maxPrice, setMaxPrice] = useState("")
+  const [minPrice, setMinPrice] = useState("")
+  const [sort, setSort] = useState("newest")
 
   const { data, isLoading } = useQuery({
-    queryKey: ["properties", type, city, search, maxPrice],
+    queryKey: ["properties", type, city, search, minPrice, maxPrice, sort],
     queryFn: () => api.get("/api/properties", {
-      params: { type, city, search, maxPrice, limit: 24 },
+      params: { type, city, search, minPrice, maxPrice, sort, limit: 24 },
     }).then(r => r.data),
   })
 
@@ -79,6 +81,26 @@ export default function BookingPage() {
               {label}
             </button>
           ))}
+        </div>
+
+        {/* شريط الترتيب + فلتر السعر + عدد النتائج */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-[var(--border)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[var(--text-muted)]">السعر:</span>
+            <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="من" className="input h-9 w-24 text-sm" />
+            <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="إلى" className="input h-9 w-24 text-sm" />
+            {(minPrice || maxPrice || type || city || search) && (
+              <button onClick={() => { setMinPrice(""); setMaxPrice(""); setType(""); setCity(""); setSearch("") }} className="text-xs text-red-500 hover:underline">مسح الفلاتر</button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {!isLoading && <span className="text-xs text-[var(--text-muted)]">{properties.length} عقار</span>}
+            <select value={sort} onChange={e => setSort(e.target.value)} className="input h-9 text-sm cursor-pointer">
+              <option value="newest">الأحدث</option>
+              <option value="price_asc">الأرخص سعراً</option>
+              <option value="price_desc">الأغلى سعراً</option>
+            </select>
+          </div>
         </div>
 
         {/* النتائج */}

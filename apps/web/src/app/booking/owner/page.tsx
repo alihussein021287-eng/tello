@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { api } from "@/lib/api"
 import toast from "react-hot-toast"
-import { Building2, Plus, Store, Calendar, Trash2, Edit, Upload, Sparkles, X } from "lucide-react"
+import { Building2, Plus, Store, Calendar, Trash2, Edit, Upload, Sparkles, X, BarChart3 } from "lucide-react"
 
 const TYPES = [
   { val: "HOTEL", label: "فندق" }, { val: "CHALET", label: "شاليه" },
@@ -158,6 +158,9 @@ export default function OwnerDashboard() {
             <p className="text-sm text-[var(--text-muted)]">لوحة إدارة العقارات</p>
           </div>
           <div className="flex gap-2">
+            <Link href="/booking/owner/reports" className="btn-ghost px-4 py-2 flex items-center gap-1.5 text-sm">
+              <BarChart3 className="w-4 h-4" /> التقارير
+            </Link>
             <Link href="/booking/owner/bookings" className="btn-ghost px-4 py-2 flex items-center gap-1.5 text-sm">
               <Calendar className="w-4 h-4" /> الحجوزات
             </Link>

@@ -1,9 +1,10 @@
 "use client"
+import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { api } from "@/lib/api"
 import toast from "react-hot-toast"
-import { MapPin, Calendar, Users, Building2, X } from "lucide-react"
+import { MapPin, Calendar, Users, Building2, X, Star } from "lucide-react"
 
 const TYPE_AR: Record<string, string> = {
   HOTEL: "فندق", CHALET: "شاليه", APARTMENT: "شقة", HOUSE: "بيت", FARM: "مزرعة", HALL: "قاعة",
@@ -18,6 +19,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 export default function MyBookingsPage() {
   const qc = useQueryClient()
+  const [reviewBooking, setReviewBooking] = useState<any>(null)
   const { data, isLoading } = useQuery({
     queryKey: ["my-bookings"],
     queryFn: () => api.get("/api/bookings/my").then(r => r.data),
@@ -76,12 +78,20 @@ export default function MyBookingsPage() {
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)]">
                       <span className="font-bold text-primary-500">{b.totalPrice?.toLocaleString()} د.ع</span>
-                      {canCancel && (
-                        <button onClick={() => cancelMut.mutate(b.id)} disabled={cancelMut.isPending}
-                          className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 disabled:opacity-50">
-                          <X className="w-3.5 h-3.5" /> إلغاء الحجز
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {["COMPLETED", "CHECKED_IN"].includes(b.status) && (
+                          <button onClick={() => setReviewBooking(b)}
+                            className="text-xs text-yellow-600 hover:text-yellow-700 flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5" /> قيّم إقامتك
+                          </button>
+                        )}
+                        {canCancel && (
+                          <button onClick={() => cancelMut.mutate(b.id)} disabled={cancelMut.isPending}
+                            className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 disabled:opacity-50">
+                            <X className="w-3.5 h-3.5" /> إلغاء الحجز
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -89,6 +99,39 @@ export default function MyBookingsPage() {
             })}
           </div>
         )}
+      </div>
+      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onDone={() => { qc.invalidateQueries({ queryKey: ["my-bookings"] }) }} />}
+    </div>
+  )
+}
+
+function ReviewModal({ booking, onClose, onDone }: any) {
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState("")
+  const mut = useMutation({
+    mutationFn: () => api.post(`/api/bookings/${booking.id}/review`, { rating, comment }).then(r => r.data),
+    onSuccess: (r: any) => { toast.success(r?.message || "شكراً لتقييمك!"); onDone(); onClose() },
+    onError: (e: any) => toast.error(e?.response?.data?.message || "تعذّر التقييم"),
+  })
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="card max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold">قيّم إقامتك في {booking.property?.titleAr}</h2>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="flex items-center justify-center gap-2 mb-4">
+          {[1,2,3,4,5].map(n => (
+            <button key={n} onClick={() => setRating(n)}>
+              <Star className={`w-8 h-8 ${n <= rating ? "fill-yellow-400 text-yellow-400" : "text-[var(--border)]"}`} />
+            </button>
+          ))}
+        </div>
+        <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3}
+          placeholder="شاركنا تجربتك (اختياري)" className="input w-full mb-4 resize-none" />
+        <button onClick={() => mut.mutate()} disabled={mut.isPending} className="btn-primary w-full py-2.5 disabled:opacity-50">
+          {mut.isPending ? "جاري الإرسال..." : "إرسال التقييم"}
+        </button>
       </div>
     </div>
   )

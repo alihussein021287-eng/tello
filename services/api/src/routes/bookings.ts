@@ -118,3 +118,36 @@ bookingRoutes.patch("/:id/cancel", async (c) => {
   const updated = await prisma.booking.update({ where: { id }, data: { status: "CANCELLED" } })
   return c.json({ success: true, data: updated })
 })
+
+// إضافة تقييم لعقار (الزبون الذي أكمل إقامته فقط)
+bookingRoutes.post("/:id/review", authMiddleware, async (c) => {
+  const { id } = c.req.param()
+  const userId = c.get("userId")
+  const { rating, comment } = await c.req.json()
+
+  if (!rating || rating < 1 || rating > 5) return c.json({ success: false, message: "التقييم من 1 إلى 5" }, 400)
+
+  // نتأكد الحجز للمستخدم ومكتمل
+  const booking = await prisma.booking.findFirst({
+    where: { id, userId, status: { in: ["COMPLETED", "CHECKED_IN"] } },
+  })
+  if (!booking) return c.json({ success: false, message: "يمكنك التقييم بعد إتمام الإقامة فقط" }, 403)
+
+  // نتأكد ماكو تقييم سابق لنفس العقار من نفس المستخدم
+  const existing = await prisma.propertyReview.findFirst({
+    where: { propertyId: booking.propertyId, userId },
+  })
+  if (existing) {
+    const updated = await prisma.propertyReview.update({
+      where: { id: existing.id },
+      data: { rating, comment: comment || null },
+    })
+    return c.json({ success: true, data: updated, message: "تم تحديث تقييمك" })
+  }
+
+  const review = await prisma.propertyReview.create({
+    data: { propertyId: booking.propertyId, userId, rating, comment: comment || null },
+  })
+  return c.json({ success: true, data: review, message: "شكراً لتقييمك!" }, 201)
+})
+

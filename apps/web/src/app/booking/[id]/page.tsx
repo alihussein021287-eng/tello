@@ -22,7 +22,12 @@ export default function PropertyDetailPage() {
     queryKey: ["property", id],
     queryFn: () => api.get(`/api/properties/${id}`).then(r => r.data),
   })
+  const { data: reviewsData } = useQuery({
+    queryKey: ["property-reviews", id],
+    queryFn: () => api.get(`/api/properties/${id}/reviews`).then(r => r.data),
+  })
   const p = data?.data
+  const reviews = reviewsData?.data || []
 
   // حساب الليالي والسعر
   const nights = checkIn && checkOut
@@ -106,9 +111,44 @@ export default function PropertyDetailPage() {
                       <Check className="w-4 h-4 text-green-500" /> {a}
                     </span>
                   ))}
+
+
                 </div>
               </>
             )}
+
+            {/* التقييمات */}
+            <div className="pt-4 border-t border-[var(--border)] mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="font-bold text-[var(--text)]">التقييمات</h2>
+                {p.reviewCount > 0 && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold">{p.avgRating.toFixed(1)}</span>
+                    <span className="text-[var(--text-muted)]">({p.reviewCount} تقييم)</span>
+                  </div>
+                )}
+              </div>
+              {reviews.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">لا توجد تقييمات بعد — كن أول من يقيّم بعد إقامتك!</p>
+              ) : (
+                <div className="space-y-3">
+                  {reviews.map((r: any) => (
+                    <div key={r.id} className="bg-[var(--bg-soft)] rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm">{r.user?.name || "زائر"}</span>
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-[var(--border)]"}`} />
+                          ))}
+                        </div>
+                      </div>
+                      {r.comment && <p className="text-sm text-[var(--text-muted)]">{r.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* صندوق الحجز */}
