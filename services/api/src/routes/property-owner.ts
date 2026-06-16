@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/db"
 import { authMiddleware } from "../middleware/auth"
+import { sendNotification } from "./notifications"
 
 export const propertyOwnerRoutes = new Hono()
 propertyOwnerRoutes.use("*", authMiddleware)
@@ -120,8 +121,31 @@ propertyOwnerRoutes.patch("/bookings/:id/status", ownerOnly, async (c) => {
   const { status } = await c.req.json()
   const allowed = ["CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELLED"]
   if (!allowed.includes(status)) return c.json({ success: false, message: "حالة غير مسموحة" }, 400)
-  const booking = await prisma.booking.findFirst({ where: { id, property: { ownerId } } })
+  const booking = await prisma.booking.findFirst({
+    where: { id, property: { ownerId } },
+    include: { property: { select: { titleAr: true } } },
+  })
   if (!booking) return c.json({ success: false, message: "الحجز غير موجود" }, 404)
   const updated = await prisma.booking.update({ where: { id }, data: { status } })
+
+  // إشعار الزبون بتغيّر حالة حجزه
+  try {
+    const msgs: Record<string, string> = {
+      CONFIRMED: `تم تأكيد حجزك على "${booking.property.titleAr}" ✓`,
+      CHECKED_IN: `تم تسجيل دخولك في "${booking.property.titleAr}"`,
+      COMPLETED: `انتهى حجزك في "${booking.property.titleAr}". نتمنى أعجبك!`,
+      CANCELLED: `تم إلغاء حجزك على "${booking.property.titleAr}"`,
+    }
+    if (msgs[status]) {
+      await sendNotification({
+        userId: booking.userId,
+        type: "BOOKING_STATUS" as any,
+        title: "تحديث الحجز",
+        body: msgs[status],
+        data: { link: "/booking/my-bookings" },
+      })
+    }
+  } catch (e: any) { console.error("[booking status notif]", e.message) }
+
   return c.json({ success: true, data: updated })
 })

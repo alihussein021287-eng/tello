@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import bcrypt from "bcryptjs"
 import { prisma } from "../lib/db"
 import { authMiddleware, adminMiddleware } from "../middleware/auth"
 import { sendNotification } from "./notifications"
@@ -236,12 +237,25 @@ adminStatsRoutes.get("/users", async (c) => {
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where, skip, take: Number(limit),
-      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true, isActive: true, _count: { select: { orders: true } } },
+      select: {
+        id: true, name: true, email: true, phone: true, role: true, createdAt: true, isActive: true,
+        _count: { select: { orders: true } },
+        vendor: { select: { id: true, storeName: true } },
+        propertyOwner: { select: { id: true, storeName: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.user.count({ where }),
   ])
-  return c.json({ success: true, data: users, total })
+  // نضيف أعلام التمييز
+  const data = users.map((u: any) => ({
+    ...u,
+    hasVendor: !!u.vendor,
+    hasPropertyOwner: !!u.propertyOwner,
+    vendorName: u.vendor?.storeName || null,
+    propertyOwnerName: u.propertyOwner?.storeName || null,
+  }))
+  return c.json({ success: true, data, total })
 })
 
 // Admin product creation
@@ -339,3 +353,142 @@ adminStatsRoutes.post("/ai-products", async (c) => {
   
   return c.json({ success: true, data: product }, 201)
 })
+
+// ═══ موافقة العقارات (منصة الحجوزات) ═══
+
+// قائمة كل العقارات (للأدمن) مع فلتر الحالة
+adminStatsRoutes.get("/properties", async (c) => {
+  const { status } = c.req.query()
+  const where: any = {}
+  if (status) where.status = status
+  const properties = await prisma.property.findMany({
+    where,
+    include: { owner: { select: { storeName: true, phone: true } } },
+    orderBy: { createdAt: "desc" },
+  })
+  return c.json({ success: true, data: properties })
+})
+
+// موافقة على عقار
+adminStatsRoutes.patch("/properties/:id/approve", async (c) => {
+  const { id } = c.req.param()
+  const property = await prisma.property.update({
+    where: { id }, data: { status: "APPROVED", isActive: true },
+    include: { owner: true },
+  })
+  try {
+    if (property.owner?.userId) {
+      await sendNotification({
+        userId: property.owner.userId, type: "VENDOR_APPROVED" as any,
+        title: "Property approved",
+        body: `تمت الموافقة على عقارك "${property.titleAr}" ✓ وأصبح ظاهراً للزبائن`,
+        data: { link: "/booking/owner" },
+      })
+    }
+  } catch (e: any) { console.error("[property approve notif]", e.message) }
+  return c.json({ success: true, data: property })
+})
+
+// رفض عقار
+adminStatsRoutes.patch("/properties/:id/reject", async (c) => {
+  const { id } = c.req.param()
+  const { reason } = await c.req.json().catch(() => ({ reason: "" }))
+  const property = await prisma.property.update({
+    where: { id }, data: { status: "REJECTED", isActive: false },
+    include: { owner: true },
+  })
+  try {
+    if (property.owner?.userId) {
+      await sendNotification({
+        userId: property.owner.userId, type: "VENDOR_REJECTED" as any,
+        title: "Property rejected",
+        body: `تم رفض عقارك "${property.titleAr}"${reason ? ": " + reason : ""}`,
+        data: { link: "/booking/owner" },
+      })
+    }
+  } catch (e: any) { console.error("[property reject notif]", e.message) }
+  return c.json({ success: true, data: property })
+})
+
+// ═══ إدارة المستخدمين (تحكم كامل للأدمن) ═══
+
+// تفاصيل مستخدم كاملة
+adminStatsRoutes.get("/users/:id", async (c) => {
+  const { id } = c.req.param()
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true, name: true, email: true, phone: true, role: true, createdAt: true, isActive: true,
+      _count: { select: { orders: true } },
+      vendor: { select: { id: true, storeName: true } },
+      propertyOwner: { select: { id: true, storeName: true, _count: { select: { properties: true } } } },
+      orders: { select: { id: true, total: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 10 },
+      bookings: { select: { id: true, totalPrice: true, status: true, checkIn: true }, orderBy: { createdAt: "desc" }, take: 10 },
+    },
+  })
+  if (!user) return c.json({ success: false, message: "المستخدم غير موجود" }, 404)
+  return c.json({ success: true, data: user })
+})
+
+// تغيير دور المستخدم
+adminStatsRoutes.patch("/users/:id/role", async (c) => {
+  const { id } = c.req.param()
+  const { role } = await c.req.json()
+  if (!["CUSTOMER", "VENDOR", "ADMIN"].includes(role)) {
+    return c.json({ success: false, message: "دور غير صالح" }, 400)
+  }
+  // لو رقّيناه لبائع، ننشئ Vendor إن ماكو
+  if (role === "VENDOR") {
+    const existing = await prisma.vendor.findUnique({ where: { userId: id } })
+    if (!existing) {
+      const u = await prisma.user.findUnique({ where: { id } })
+      await prisma.vendor.create({ data: { userId: id, storeName: (u?.name || "متجر") + " Store" } })
+    }
+  }
+  const user = await prisma.user.update({ where: { id }, data: { role }, select: { id: true, role: true } })
+  return c.json({ success: true, data: user })
+})
+
+// تفعيل/تعطيل (حظر) مستخدم
+adminStatsRoutes.patch("/users/:id/toggle", async (c) => {
+  const { id } = c.req.param()
+  const adminId = c.get("userId")
+  if (id === adminId) return c.json({ success: false, message: "لا يمكنك حظر نفسك" }, 400)
+  const user = await prisma.user.findUnique({ where: { id }, select: { isActive: true } })
+  if (!user) return c.json({ success: false, message: "غير موجود" }, 404)
+  const updated = await prisma.user.update({ where: { id }, data: { isActive: !user.isActive }, select: { id: true, isActive: true } })
+  return c.json({ success: true, data: updated })
+})
+
+// تعديل بيانات مستخدم
+adminStatsRoutes.patch("/users/:id", async (c) => {
+  const { id } = c.req.param()
+  const body = await c.req.json()
+  const data: any = {}
+  if (body.name)  data.name = body.name
+  if (body.email) data.email = body.email
+  if (body.phone !== undefined) data.phone = body.phone
+  const user = await prisma.user.update({ where: { id }, data, select: { id: true, name: true, email: true, phone: true } })
+  return c.json({ success: true, data: user })
+})
+
+// إعادة تعيين كلمة السر
+adminStatsRoutes.patch("/users/:id/password", async (c) => {
+  const { id } = c.req.param()
+  const { password } = await c.req.json()
+  if (!password || password.length < 6) return c.json({ success: false, message: "كلمة السر 6 أحرف على الأقل" }, 400)
+  const hashed = await bcrypt.hash(password, 12)
+  await prisma.user.update({ where: { id }, data: { password: hashed } })
+  return c.json({ success: true, message: "تم تغيير كلمة السر" })
+})
+
+// حذف مستخدم
+adminStatsRoutes.delete("/users/:id", async (c) => {
+  const { id } = c.req.param()
+  const adminId = c.get("userId")
+  if (id === adminId) return c.json({ success: false, message: "لا يمكنك حذف نفسك" }, 400)
+  // نعطّله بدل الحذف الفعلي (آمن — يحفظ سجلّ الطلبات)
+  await prisma.user.update({ where: { id }, data: { isActive: false } })
+  return c.json({ success: true, message: "تم تعطيل الحساب" })
+})
+

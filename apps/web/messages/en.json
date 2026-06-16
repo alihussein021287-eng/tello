@@ -48,7 +48,8 @@
     "login_btn": "Login",
     "register_btn": "Create Account",
     "have_account": "Already have an account?",
-    "no_account": "Don't have an account?"
+    "no_account": "Don't have an account?",
+    "login": "Login"
   },
   "common": {
     "loading": "Loading...",

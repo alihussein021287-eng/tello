@@ -4,8 +4,7 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Bot,
   LogOut, ChevronLeft, Store, Tag, Sun, Moon,
-  TrendingUp, Grid, DollarSign, Star, Settings,
-} from "lucide-react"
+  TrendingUp, Grid, DollarSign, Star, Settings, Building2 } from "lucide-react"
 import { useAdminAuth } from "@/store/auth"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -18,6 +17,7 @@ const NAV = [
   { href: "/dashboard/orders",       icon: ShoppingCart,    label: "الطلبات" },
   { href: "/dashboard/users",        icon: Users,           label: "المستخدمين" },
   { href: "/dashboard/vendors",      icon: Store,           label: "البائعين" },
+  { href: "/dashboard/properties",   icon: Building2,       label: "العقارات (حجوزات)" },
   { href: "/dashboard/commissions",  icon: DollarSign,      label: "العمولات" },
   { href: "/dashboard/coupons",      icon: Tag,             label: "الكوبونات" },
   { href: "/dashboard/reviews",      icon: Star,            label: "التقييمات" },

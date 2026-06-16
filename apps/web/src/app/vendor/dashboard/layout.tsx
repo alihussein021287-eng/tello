@@ -72,6 +72,13 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
             )
           })}
         </nav>
+        {/* العودة للموقع */}
+        <div className="p-3 border-t border-[var(--border)]">
+          <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--text-muted)] hover:bg-[var(--bg-soft)] hover:text-[var(--text)] transition-all">
+            <Store className="w-4 h-4" />
+            العودة للمتجر
+          </Link>
+        </div>
       </aside>
 
       {/* Main */}

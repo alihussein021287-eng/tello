@@ -29,6 +29,11 @@ export const adminApi = {
   stats: () => api.get("/api/admin/stats").then(r => r.data),
 
   // Products
+  properties: {
+    list:    (status?: string)      => api.get(`/api/admin/properties${status ? "?status=" + status : ""}`).then(r => r.data),
+    approve: (id: string)          => api.patch(`/api/admin/properties/${id}/approve`).then(r => r.data),
+    reject:  (id: string, reason?: string) => api.patch(`/api/admin/properties/${id}/reject`, { reason }).then(r => r.data),
+  },
   products: {
     list:   (p?: any)              => api.get("/api/admin/products",      { params: p }).then(r => r.data),
     update: (id: string, d: any)   => api.patch(`/api/admin/products/${id}`, d).then(r => r.data),
@@ -45,7 +50,13 @@ export const adminApi = {
 
   // Users
   users: {
-    list: (p?: any) => api.get("/api/admin/users", { params: p }).then(r => r.data),
+    list:    (p?: any)                          => api.get("/api/admin/users", { params: p }).then(r => r.data),
+    get:     (id: string)                       => api.get(`/api/admin/users/${id}`).then(r => r.data),
+    setRole: (id: string, role: string)         => api.patch(`/api/admin/users/${id}/role`, { role }).then(r => r.data),
+    toggle:  (id: string)                       => api.patch(`/api/admin/users/${id}/toggle`).then(r => r.data),
+    update:  (id: string, data: any)            => api.patch(`/api/admin/users/${id}`, data).then(r => r.data),
+    setPassword: (id: string, password: string) => api.patch(`/api/admin/users/${id}/password`, { password }).then(r => r.data),
+    remove:  (id: string)                       => api.delete(`/api/admin/users/${id}`).then(r => r.data),
   },
 
   // Vendors

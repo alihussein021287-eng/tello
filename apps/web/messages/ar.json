@@ -51,7 +51,8 @@
     "register_btn": "إنشاء الحساب",
     "have_account": "عندك حساب؟ سجّل دخولك",
     "no_account": "ما عندك حساب؟",
-    "register": "إنشاء حساب"
+    "register": "إنشاء حساب",
+    "login": "تسجيل الدخول"
   },
   "common": {
     "loading": "جاري التحميل...",

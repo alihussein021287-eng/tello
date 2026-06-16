@@ -27,3 +27,4 @@ apps/_backups/
 product_backup_*
 apps/mobile/.expo/
 .expo/
+*.before_booking

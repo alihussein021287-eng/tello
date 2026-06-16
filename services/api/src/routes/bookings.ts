@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/db"
 import { authMiddleware } from "../middleware/auth"
+import { sendNotification } from "./notifications"
 
 export const bookingRoutes = new Hono()
 bookingRoutes.use("*", authMiddleware)
@@ -24,6 +25,7 @@ bookingRoutes.post("/", async (c) => {
   // نجيب العقار
   const property = await prisma.property.findFirst({
     where: { id: propertyId, status: "APPROVED", isActive: true },
+    include: { owner: { select: { userId: true } } },
   })
   if (!property) return c.json({ success: false, message: "العقار غير متاح" }, 404)
 
@@ -61,6 +63,19 @@ bookingRoutes.post("/", async (c) => {
       notes: b.notes || null,
     },
   })
+
+  // إشعار المالك بحجز جديد
+  try {
+    if (property.owner?.userId) {
+      await sendNotification({
+        userId: property.owner.userId,
+        type: "NEW_BOOKING" as any,
+        title: "حجز جديد",
+        body: `حجز جديد على "${property.titleAr}" — ${nights} ليالي بقيمة ${totalPrice.toLocaleString()} د.ع`,
+        data: { link: "/booking/owner/bookings" },
+      })
+    }
+  } catch (e: any) { console.error("[booking notif]", e.message) }
 
   return c.json({ success: true, data: booking, message: "تم إنشاء الحجز، بانتظار تأكيد المالك" }, 201)
 })

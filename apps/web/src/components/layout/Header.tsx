@@ -99,11 +99,17 @@ export function Header() {
                   <Link href="/account/wishlist"     className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">المفضلة</Link>
 
                   {/* قسم المتجر (للبائع) */}
-                  {(user.role === "VENDOR" || user.role === "ADMIN") && (
+                  {(user.role === "VENDOR" || user.role === "ADMIN") ? (
                     <>
                       <hr className="my-1 border-[var(--border)]" />
                       <p className="px-4 pt-1 pb-0.5 text-[10px] font-bold text-[var(--text-muted)] uppercase">🏪 متجري</p>
                       <Link href="/vendor/dashboard" className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">لوحة البائع</Link>
+                    </>
+                  ) : (
+                    <>
+                      <hr className="my-1 border-[var(--border)]" />
+                      <p className="px-4 pt-1 pb-0.5 text-[10px] font-bold text-[var(--text-muted)] uppercase">✨ ابدأ مشروعك</p>
+                      <Link href="/vendor/register" className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">🏪 افتح متجرك</Link>
                     </>
                   )}
 
