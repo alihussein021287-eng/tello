@@ -47,6 +47,9 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-1 ms-auto">
+            <Link href="/booking" className="btn-ghost px-3 py-2 text-sm font-medium hidden sm:flex items-center gap-1.5 hover:text-primary-500">
+              🏨 الحجوزات
+            </Link>
             <button onClick={toggleLocale} className="btn-ghost p-2 text-sm font-semibold">
               {locale === "ar" ? "EN" : "ع"}
             </button>
