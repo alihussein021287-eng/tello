@@ -91,7 +91,9 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute end-0 top-full mt-2 w-80 bg-[var(--bg)] border border-[var(--border)] rounded-2xl shadow-xl z-50 overflow-hidden animate-fade-in">
+        <>
+        <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:end-0 top-16 sm:top-full mt-0 sm:mt-2 sm:w-80 bg-[var(--bg)] border border-[var(--border)] rounded-2xl shadow-xl z-50 overflow-hidden animate-fade-in max-h-[70vh] flex flex-col">
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
@@ -105,7 +107,7 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
             {notifs.length === 0 && (
               <div className="py-10 text-center text-[var(--text-muted)] text-sm">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
@@ -144,6 +146,7 @@ export function NotificationBell() {
             })}
           </div>
         </div>
+        </>
       )}
     </div>
   )

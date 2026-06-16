@@ -152,19 +152,19 @@ export default function OwnerDashboard() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[var(--text)]">{meData.data.storeName}</h1>
             <p className="text-sm text-[var(--text-muted)]">لوحة إدارة العقارات</p>
           </div>
-          <div className="flex gap-2">
-            <Link href="/booking/owner/reports" className="btn-ghost px-4 py-2 flex items-center gap-1.5 text-sm">
+          <div className="flex flex-wrap gap-2">
+            <Link href="/booking/owner/reports" className="btn-ghost px-3 sm:px-4 py-2 flex items-center gap-1.5 text-sm">
               <BarChart3 className="w-4 h-4" /> التقارير
             </Link>
-            <Link href="/booking/owner/bookings" className="btn-ghost px-4 py-2 flex items-center gap-1.5 text-sm">
+            <Link href="/booking/owner/bookings" className="btn-ghost px-3 sm:px-4 py-2 flex items-center gap-1.5 text-sm">
               <Calendar className="w-4 h-4" /> الحجوزات
             </Link>
-            <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 flex items-center gap-1.5 text-sm">
+            <button onClick={() => setShowForm(true)} className="btn-primary px-3 sm:px-4 py-2 flex items-center gap-1.5 text-sm">
               <Plus className="w-4 h-4" /> أضف عقار
             </button>
           </div>
@@ -211,8 +211,8 @@ export default function OwnerDashboard() {
 
       {/* فورم إضافة عقار */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="card max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="card max-w-2xl w-full my-2 sm:my-8 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg)]">
               <h2 className="font-bold text-lg">عقار جديد</h2>
               <button onClick={() => setShowForm(false)}><X className="w-5 h-5" /></button>

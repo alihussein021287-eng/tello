@@ -69,7 +69,7 @@ export default function OwnerBookingsPage() {
                   </div>
                   {/* أزرار الإجراء */}
                   {b.status === "PENDING" && (
-                    <div className="flex gap-2 pt-3 border-t border-[var(--border)]">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
                       <button onClick={() => statusMut.mutate({ id: b.id, status: "CONFIRMED" })} disabled={statusMut.isPending}
                         className="flex-1 bg-green-500/15 text-green-600 hover:bg-green-500/25 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50">
                         <Check className="w-4 h-4" /> تأكيد الحجز
@@ -81,7 +81,7 @@ export default function OwnerBookingsPage() {
                     </div>
                   )}
                   {b.status === "CONFIRMED" && (
-                    <div className="flex gap-2 pt-3 border-t border-[var(--border)]">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
                       <button onClick={() => statusMut.mutate({ id: b.id, status: "CHECKED_IN" })} disabled={statusMut.isPending}
                         className="flex-1 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                         تسجيل الدخول
@@ -89,7 +89,7 @@ export default function OwnerBookingsPage() {
                     </div>
                   )}
                   {b.status === "CHECKED_IN" && (
-                    <div className="flex gap-2 pt-3 border-t border-[var(--border)]">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
                       <button onClick={() => statusMut.mutate({ id: b.id, status: "COMPLETED" })} disabled={statusMut.isPending}
                         className="flex-1 bg-gray-500/15 text-gray-600 hover:bg-gray-500/25 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                         إنهاء الحجز

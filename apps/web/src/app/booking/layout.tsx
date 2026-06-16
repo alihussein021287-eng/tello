@@ -39,7 +39,7 @@ export default function BookingLayout({ children }: { children: React.ReactNode 
                 </Link>
               )
             })}
-            <div className="ms-auto flex items-center gap-2 ps-2">
+            <div className="ms-auto flex items-center gap-2 ps-2 flex-shrink-0">
               {user ? (
                 <>
                   <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] whitespace-nowrap">
