@@ -16,6 +16,7 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted]     = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const cartCount  = useCartStore(s => s.count())
   const user       = useAuthStore(s => s.user)
   const clearAuth  = useAuthStore(s => s.clearAuth)
@@ -75,20 +76,48 @@ export function Header() {
 
             {/* Account */}
             {user ? (
-              <div className="relative group">
-                <button className="btn-ghost p-2">
+              <div className="relative">
+                <button onClick={() => setMenuOpen(o => !o)} className="btn-ghost px-2 py-1.5 flex items-center gap-1.5">
                   <User className="w-5 h-5" />
+                  <span className="hidden md:flex flex-col items-start leading-tight">
+                    <span className="text-xs font-semibold">{user.name || user.email}</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">{user.role === "ADMIN" ? "أدمن" : user.role === "VENDOR" ? "بائع" : "زبون"}</span>
+                  </span>
                 </button>
-                <div className="absolute end-0 top-full mt-1 w-48 bg-[var(--bg)] border border-[var(--border)] rounded-2xl shadow-lg py-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all z-50">
-                  <Link href="/account"              className="block px-4 py-2.5 text-sm hover:bg-[var(--bg-soft)] transition-colors">{t("account")}</Link>
-                  <Link href="/account/orders"       className="block px-4 py-2.5 text-sm hover:bg-[var(--bg-soft)] transition-colors">{t("orders")}</Link>
-                  <Link href="/account/wishlist"     className="block px-4 py-2.5 text-sm hover:bg-[var(--bg-soft)] transition-colors">المفضلة</Link>
+                {menuOpen && <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />}
+                <div className={`absolute end-0 top-full mt-1 w-56 bg-[var(--bg)] border border-[var(--border)] rounded-2xl shadow-lg py-2 transition-all z-50 max-h-[80vh] overflow-y-auto ${menuOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={() => setMenuOpen(false)}>
+                  {/* رأس: الاسم والدور */}
+                  <div className="px-4 py-2 border-b border-[var(--border)] mb-1">
+                    <p className="text-sm font-semibold truncate">{user.name || user.email}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{user.role === "ADMIN" ? "أدمن" : user.role === "VENDOR" ? "بائع" : "زبون"}</p>
+                  </div>
+
+                  {/* قسم التسوّق */}
+                  <p className="px-4 pt-1 pb-0.5 text-[10px] font-bold text-[var(--text-muted)] uppercase">🛒 التسوّق</p>
+                  <Link href="/account"              className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">حسابي</Link>
+                  <Link href="/account/orders"       className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">طلباتي</Link>
+                  <Link href="/account/wishlist"     className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">المفضلة</Link>
+
+                  {/* قسم المتجر (للبائع) */}
                   {(user.role === "VENDOR" || user.role === "ADMIN") && (
-                    <Link href="/vendor/dashboard"   className="block px-4 py-2.5 text-sm hover:bg-[var(--bg-soft)] transition-colors">🏪 متجري</Link>
+                    <>
+                      <hr className="my-1 border-[var(--border)]" />
+                      <p className="px-4 pt-1 pb-0.5 text-[10px] font-bold text-[var(--text-muted)] uppercase">🏪 متجري</p>
+                      <Link href="/vendor/dashboard" className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">لوحة البائع</Link>
+                    </>
                   )}
+
+                  {/* قسم الحجوزات */}
                   <hr className="my-1 border-[var(--border)]" />
-                  <button onClick={clearAuth} className="block w-full text-start px-4 py-2.5 text-sm text-red-500 hover:bg-[var(--bg-soft)] transition-colors">
-                    {t("logout")}
+                  <p className="px-4 pt-1 pb-0.5 text-[10px] font-bold text-[var(--text-muted)] uppercase">🏨 الحجوزات</p>
+                  <Link href="/booking"              className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">تصفّح العقارات</Link>
+                  <Link href="/booking/my-bookings"  className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">حجوزاتي</Link>
+                  <Link href="/booking/owner"        className="block px-4 py-2 text-sm hover:bg-[var(--bg-soft)] transition-colors">عقاراتي للإيجار</Link>
+
+                  {/* خروج */}
+                  <hr className="my-1 border-[var(--border)]" />
+                  <button onClick={clearAuth} className="block w-full text-start px-4 py-2 text-sm text-red-500 hover:bg-[var(--bg-soft)] transition-colors">
+                    🚪 {t("logout")}
                   </button>
                 </div>
               </div>
